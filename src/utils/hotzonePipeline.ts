@@ -88,29 +88,39 @@ export const processAnchorsToHotzones = async (
   }
   mergedHotzones.push(current);
 
-  // 4. If real audio file is provided, transcribe the merged hotzones
-  if (audioFile) {
-    console.log("Starting batch transcription for", mergedHotzones.length, "hotzones...");
-    
-    // Process in parallel
-    const transcriptionPromises = mergedHotzones.map(async (hz) => {
-      try {
-        console.log(`Slicing audio for Hotzone ${hz.id}: ${hz.start_time}s - ${hz.end_time}s`);
-        const audioSlice = await sliceAudio(audioFile, hz.start_time, hz.end_time);
-        
+  // 4. Process hotzones (transcribe if audio file exists, or use transcript fallback)
+  console.log(`Starting batch transcription for ${mergedHotzones.length} hotzones...`);
+  
+  const processedHotzones = await Promise.all(mergedHotzones.map(async (hz) => {
+    // If no audio file (remote stream), skip slicing/transcribing for MVP
+    // Unless we implement remote slicing.
+    if (!audioFile) {
+        // Fallback: try to find match in mock transcript or just keep as placeholder
+        const match = transcript.find(t => t.start_time <= hz.start_time && t.end_time >= hz.end_time);
+        if (match) {
+             return { ...hz, transcript_snippet: match.text };
+        }
+        return { ...hz, transcript_snippet: "[Remote audio transcription not supported in MVP]" };
+    }
+
+    try {
+      const audioSlice = await sliceAudio(audioFile, hz.start_time, hz.end_time);
+      
+      let text = hz.transcript_snippet;
+      
+      // Check if metadata already has text (e.g. re-run)
+      if (!text || text === "Processing...") {
         console.log(`Transcribing Hotzone ${hz.id}...`);
-        const text = await transcribeAudio(audioSlice);
+        text = await transcribeAudio(audioSlice);
         
         console.log(`Transcription complete for ${hz.id}: "${text.substring(0, 20)}..."`);
-        return { ...hz, transcript_snippet: text };
-      } catch (error) {
-        console.error(`Failed to process Hotzone ${hz.id}`, error);
-        return { ...hz, transcript_snippet: "[Transcription Failed]" };
       }
-    });
+      return { ...hz, transcript_snippet: text };
+    } catch (error) {
+      console.error(`Error processing hotzone ${hz.id}:`, error);
+      return { ...hz, transcript_snippet: "[Processing Failed]" };
+    }
+  }));
 
-    return await Promise.all(transcriptionPromises);
-  }
-
-  return mergedHotzones;
+  return processedHotzones;
 };

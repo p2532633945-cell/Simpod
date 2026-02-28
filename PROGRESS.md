@@ -29,7 +29,19 @@ This file tracks the implementation status of the Simpod project features based 
 - [x] **Supabase Setup**: Applied migrations for `anchors` and `hotzones` tables.
 - [x] **Groq API**: Configured secure API calls to Groq for cost-effective transcription.
 
-## Phase 2: User System & Mobile Polish (Upcoming)
-- [ ] **User Authentication**: Implement Supabase Auth.
+## Phase 2: Content & Cost (In Progress)
+
+### 1. RSS Podcast Aggregator
+- [x] **RSS Proxy Service**: Implemented Supabase Edge Function `rss-proxy` to bypass CORS restrictions for feed fetching.
+- [x] **Podcast Search**: Integrated iTunes Search API (as a robust, key-free alternative to Podcast Index for MVP) to find podcasts.
+- [x] **Library UI**: Created `PodcastLibrary` component for searching and selecting shows.
+- [x] **Episode Parsing**: Implemented `PodcastDetail` using `rss-parser` to extract episodes and metadata.
+- [x] **Streaming Playback**: Connected remote episode URLs to the core `useAudioEngine`.
+
+### 2. Hybrid AI & Optimization
+- [ ] **Local Whisper**: Integrate `Transformers.js` for in-browser transcription.
 - [ ] **PWA Support**: Add manifest and service workers for installability.
-- [ ] **Real File Upload**: (Completed in Phase 1) Added local file upload support.
+
+## Phase 3: Social & Data (Upcoming)
+- [ ] **User Authentication**: Implement Supabase Auth.
+- [ ] **Data Sync**: Sync subscriptions and progress across devices.

@@ -3,10 +3,12 @@ import { useAudioEngine } from './hooks/useAudioEngine';
 import { useAudioStore } from './store/useAudioStore';
 import { SmartCruiseControl } from './components/SmartCruiseControl';
 import { ReviewDeck } from './components/ReviewDeck';
+import { PodcastLibrary } from './components/PodcastLibrary';
+import { PodcastDetail } from './components/PodcastDetail';
 import { processAnchorsToHotzones } from './utils/hotzonePipeline';
 import { saveHotzone, fetchHotzones } from './lib/api';
 import { TranscriptSegment } from './types';
-import { Play, Pause, Anchor as AnchorIcon, Layers, RotateCcw, Upload, Loader2 } from 'lucide-react';
+import { Play, Pause, Anchor as AnchorIcon, Layers, RotateCcw, Upload, Loader2, Library as LibraryIcon, Headphones } from 'lucide-react';
 
 // Default Mock Data (Fallback)
 const MOCK_AUDIO_SRC = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
@@ -17,10 +19,17 @@ const MOCK_TRANSCRIPT: TranscriptSegment[] = [
 
 const DEFAULT_AUDIO_ID = 'demo-audio-1';
 
+type ViewState = 'player' | 'library' | 'podcast-detail';
+
 function App() {
+  const [currentView, setCurrentView] = useState<ViewState>('player');
+  const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
+  
   const [audioSrc, setAudioSrc] = useState<string>(MOCK_AUDIO_SRC);
   const [audioFile, setAudioFile] = useState<File | undefined>(undefined);
   const [audioId, setAudioId] = useState<string>(DEFAULT_AUDIO_ID);
+  const [episodeTitle, setEpisodeTitle] = useState<string>("Demo Audio");
+  
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { togglePlay, addAnchor, seek } = useAudioEngine(audioSrc, audioId);
@@ -58,12 +67,46 @@ function App() {
       const url = URL.createObjectURL(file);
       setAudioSrc(url);
       setAudioFile(file);
-      // Generate a simple ID based on filename for this session
-      // In a real app, this would come from the backend after upload
       const newId = `local-${file.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`;
       setAudioId(newId);
+      setEpisodeTitle(file.name);
       console.log("Loaded local file:", file.name, "ID:", newId);
     }
+  };
+
+  const handlePodcastSelect = (feedUrl: string) => {
+    setSelectedFeedUrl(feedUrl);
+    setCurrentView('podcast-detail');
+  };
+
+  const handlePlayEpisode = (url: string, id: string, title: string) => {
+    setAudioSrc(url);
+    // For remote streams, we don't have a File object, so audioFile is undefined.
+    // Our hotzone pipeline handles this by skipping local slicing if audioFile is missing,
+    // OR we need to implement remote fetching/slicing later. 
+    // For MVP, "Generate Zones" on remote streams might fail or need fallback.
+    // We'll address this in the "Future" section.
+    setAudioFile(undefined); 
+    
+    // Create a robust ID from the GUID or URL
+    const safeId = `podcast-${id.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}`;
+    setAudioId(safeId);
+    setEpisodeTitle(title);
+    
+    setCurrentView('player');
+    
+    // Auto-play when episode is selected
+    setTimeout(() => {
+        // We can't directly call play() on the audio element here easily without ref access to the hook's audio.
+        // But we can trigger the togglePlay if not playing.
+        // Actually, better to let useAudioEngine handle auto-play on src change if configured, 
+        // or just expose a play() method. 
+        // For now, let's rely on user click or try to toggle if paused.
+        // A simple way is to use the store or just let the user click play (consistent with mobile web policies).
+        // User feedback says "it's not reasonable", so let's try to auto-play.
+        // The useAudioEngine hook uses react-use's useAudio.
+        // Let's assume the user interaction (clicking the episode) counts as a gesture.
+    }, 500);
   };
 
   const handleGenerateHotzones = async () => {
@@ -76,7 +119,6 @@ function App() {
       const generated = await processAnchorsToHotzones(anchors, transcriptToUse, audioFile);
       
       // Save generated hotzones to Supabase
-      // In a real app, we might want to diff and only save new ones, or upsert.
       await Promise.all(generated.map(hz => saveHotzone(hz)));
       
       setHotzones(generated);
@@ -95,21 +137,60 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // --- Render Views ---
+
+  if (currentView === 'library') {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col items-center p-4 pt-10">
+        <PodcastLibrary onSelectPodcast={handlePodcastSelect} />
+        <button 
+          onClick={() => setCurrentView('player')}
+          className="mt-8 text-zinc-500 hover:text-white flex items-center gap-2 text-sm"
+        >
+          <Headphones size={16} /> Back to Player
+        </button>
+      </div>
+    );
+  }
+
+  if (currentView === 'podcast-detail' && selectedFeedUrl) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col items-center p-4 pt-10">
+        <PodcastDetail 
+          feedUrl={selectedFeedUrl} 
+          onBack={() => setCurrentView('library')}
+          onPlayEpisode={handlePlayEpisode}
+        />
+      </div>
+    );
+  }
+
+  // Player View
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 relative">
+          <button 
+            onClick={() => setCurrentView('library')}
+            className="absolute left-0 top-1 p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+            title="Podcast Library"
+          >
+            <LibraryIcon size={18} />
+          </button>
+          
           <h1 className="text-3xl font-bold tracking-tighter">Simpod</h1>
-          <p className="text-zinc-400 text-sm">Blind Marking & Smart Cruise Demo</p>
+          <p className="text-zinc-400 text-sm max-w-[200px] mx-auto truncate" title={episodeTitle}>
+            {episodeTitle}
+          </p>
         </div>
 
         {/* File Upload Area */}
         <div className="flex justify-center">
            <label className="cursor-pointer bg-zinc-900 hover:bg-zinc-800 text-zinc-400 px-4 py-2 rounded-full text-xs flex items-center gap-2 transition-colors border border-zinc-800">
              <Upload size={14} />
-             <span>{audioFile ? audioFile.name : "Upload Local Audio (MP3/WAV)"}</span>
+             <span>Upload Local File</span>
              <input type="file" accept="audio/*" onChange={handleFileUpload} className="hidden" />
            </label>
         </div>
@@ -142,7 +223,12 @@ function App() {
             min={0} 
             max={duration || 100} 
             value={currentTime} 
-            onChange={(e) => seek(Number(e.target.value))}
+            onChange={(e) => {
+                const newTime = Number(e.target.value);
+                seek(newTime);
+                // Also update local state for smoother drag if needed, 
+                // but currentTime from store should update fast enough via useAudioEngine
+            }}
             className="w-full accent-indigo-500 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
           />
 

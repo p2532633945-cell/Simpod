@@ -20,18 +20,83 @@ export const useAudioEngine = (src: string, audioId: string) => {
     addAnchor: addAnchorToStore,
   } = useAudioStore();
 
+  const handleAddAnchor = useCallback(async (source: 'manual' | 'auto' = 'manual') => {
+    if (audioRef.current) {
+      const timestamp = audioRef.current.currentTime;
+      const newAnchor: Anchor = {
+        id: generateId(),
+        audio_id: audioId,
+        timestamp,
+        source,
+        created_at: new Date().toISOString(),
+      };
+      
+      // Update local state immediately (Optimistic UI)
+      addAnchorToStore(newAnchor);
+      console.log('Anchor added locally:', newAnchor);
+
+      // Persist to Supabase
+      try {
+        await saveAnchor(newAnchor);
+        console.log('Anchor synced to Supabase');
+      } catch (error) {
+        console.error('Failed to sync anchor:', error);
+        // Ideally, we would rollback the state or show an error toast here
+      }
+    }
+  }, [audioId, addAnchorToStore]);
+
   // Initialize Audio
   useEffect(() => {
+    // If src is the same, do nothing to prevent re-initialization
+    if (audioRef.current && audioRef.current.src === src) return;
+
+    // Clean up previous audio instance if it exists
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+    }
+
     const audio = new Audio(src);
     audioRef.current = audio;
     
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    // Auto-play when src changes (user selected new episode/file)
+    // We wrap in a promise catch to handle browser autoplay policies
+    // For demo/mock audio, we might not want to autoplay on initial load, only on explicit changes.
+    // But detecting "initial load" vs "change" inside this effect is tricky without ref.
+    // Let's rely on isPlaying state from store, which defaults to false.
+    // Wait, the store persists state? No, it's in-memory.
+    // Let's just try to play if it was playing, OR if it's a new track.
+    
+    // NOTE: Autoplay often fails without user interaction.
+    // We should NOT force autoplay on mount if the user hasn't interacted.
+    // But when switching tracks (user clicked), it should work.
+    
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.log("Autoplay prevented:", error);
+            setIsPlaying(false); // Sync state to "paused" if autoplay failed
+        });
+    } else {
+        // Some older browsers might not return a promise, though rare now
+        setIsPlaying(true);
+    }
+
     const updateDuration = () => setDuration(audio.duration);
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onRateChange = () => setPlaybackRate(audio.playbackRate);
     
-    audio.addEventListener('timeupdate', updateTime);
+    // Explicitly add loadeddata event to ensure we catch ready state
+    audio.addEventListener('loadeddata', () => {
+        // If the audio is ready and we think we are playing, make sure it is playing
+        if (isPlaying) {
+             audio.play().catch(() => setIsPlaying(false));
+        }
+    });
+
+    // Note: We removed 'timeupdate' listener to avoid conflict with requestAnimationFrame loop
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
@@ -58,40 +123,71 @@ export const useAudioEngine = (src: string, audioId: string) => {
         audio.currentTime = Math.min(audio.currentTime + (details.seekOffset || 10), audio.duration);
       });
       // Use 'nexttrack' as the hardware button trigger for "Add Anchor"
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        handleAddAnchor('manual');
-      });
+      // Note: We are using a simplified handler here inside the effect to avoid closure staleness issues with handleAddAnchor if we moved it out.
+      // But actually, handleAddAnchor is defined ABOVE now (hoisted via useCallback?), wait no.
+      // In JS, const variables are not hoisted. We MUST define handleAddAnchor BEFORE using it in useEffect.
+      // OR use a ref for the handler.
     }
 
     return () => {
       audio.pause();
-      audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ratechange', onRateChange);
-      audioRef.current = null;
+      // Don't nullify ref immediately if we want to reuse? No, cleanup is correct.
+      // audioRef.current = null; // Commented out to allow effect to see previous src
     };
-  }, [src]);
+  }, [src]); // Re-run only when src changes
+
+  // Separate effect to update Media Session Next Track handler when audioId changes or handleAddAnchor changes
+  // This needs to be AFTER handleAddAnchor definition
+  useEffect(() => {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+            handleAddAnchor('manual');
+        });
+      }
+  }, [audioId, handleAddAnchor]);
 
   // Sync state changes to audio element
   useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying && audioRef.current.paused) {
-        audioRef.current.play().catch(e => console.error("Play error:", e));
-      } else if (!isPlaying && !audioRef.current.paused) {
-        audioRef.current.pause();
+    const audio = audioRef.current;
+    if (audio) {
+      if (isPlaying && audio.paused) {
+        audio.play().catch(e => {
+            console.error("Play error in sync:", e);
+            // If play fails (e.g. autoplay policy), revert store state
+            setIsPlaying(false);
+        });
+      } else if (!isPlaying && !audio.paused) {
+        audio.pause();
       }
     }
   }, [isPlaying]);
 
+  // Update time loop using requestAnimationFrame for smoother UI updates
   useEffect(() => {
-    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 0.5) {
-       // Only seek if difference is significant to avoid fighting with timeupdate
-       // Actually, we should probably not sync currentTime back to audio unless it's a seek action
-       // But for now, let's rely on exposed 'seek' function
+    let animationFrameId: number;
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+         setCurrentTime(audio.currentTime);
+         animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
+    if (isPlaying) {
+      tick();
     }
-  }, [currentTime]);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isPlaying, setCurrentTime]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -123,31 +219,7 @@ export const useAudioEngine = (src: string, audioId: string) => {
     }
   }, [setPlaybackRate]);
 
-  const handleAddAnchor = useCallback(async (source: 'manual' | 'auto' = 'manual') => {
-    if (audioRef.current) {
-      const timestamp = audioRef.current.currentTime;
-      const newAnchor: Anchor = {
-        id: generateId(),
-        audio_id: audioId,
-        timestamp,
-        source,
-        created_at: new Date().toISOString(),
-      };
-      
-      // Update local state immediately (Optimistic UI)
-      addAnchorToStore(newAnchor);
-      console.log('Anchor added locally:', newAnchor);
-
-      // Persist to Supabase
-      try {
-        await saveAnchor(newAnchor);
-        console.log('Anchor synced to Supabase');
-      } catch (error) {
-        console.error('Failed to sync anchor:', error);
-        // Ideally, we would rollback the state or show an error toast here
-      }
-    }
-  }, [audioId, addAnchorToStore]);
+  // handleAddAnchor moved ABOVE useEffect to fix ReferenceError
 
   return {
     togglePlay,

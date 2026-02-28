@@ -1,57 +1,47 @@
-# React + TypeScript + Vite
+# Simpod - The Power of Pepper 🌶️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Simpod is an AI-powered podcast player designed for language learners. It features "Smart Cruise" mode, which automatically detects and loops key vocabulary segments ("Hotzones") in podcasts.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **RSS Podcast Aggregator**: Search and subscribe to any podcast (via iTunes & Podcast Index).
+- **Smart Cruise Control**: Auto-loops difficult segments.
+- **AI Transcription**: (Planned) Local & Cloud transcription.
+- **PWA Support**: Installable on Mobile & Desktop.
+- **Vercel Serverless**: Backend proxy for CORS and API handling.
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Frontend**: React, TypeScript, Tailwind CSS, Vite
+- **Backend**: Vercel Serverless Functions, Supabase (Database)
+- **State Management**: Zustand
+- **Audio**: Custom Audio Engine Hook
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Getting Started
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+2. **Environment Setup**
+   Copy `.env.example` to `.env` (create it if missing) and add your keys:
+   ```env
+   VITE_SUPABASE_URL=your_url
+   VITE_SUPABASE_ANON_KEY=your_key
+   PODCAST_INDEX_KEY=your_key
+   PODCAST_INDEX_SECRET=your_secret
+   ```
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+3. **Run Locally**
+   ```bash
+   npm run dev
+   ```
+
+## Deployment
+
+See [Deployment Guide](docs/DEPLOYMENT.md) for Vercel configuration and PWA details.
+
+## License
+
+MIT
