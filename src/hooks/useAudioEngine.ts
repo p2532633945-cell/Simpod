@@ -56,45 +56,29 @@ export const useAudioEngine = (src: string, audioId: string) => {
         audioRef.current.pause();
         audioRef.current.src = "";
     }
+    
+    // Reset playing state when src changes to avoid auto-play loops
+    setIsPlaying(false);
 
     const audio = new Audio(src);
     audioRef.current = audio;
     
     // Auto-play when src changes (user selected new episode/file)
     // We wrap in a promise catch to handle browser autoplay policies
-    // For demo/mock audio, we might not want to autoplay on initial load, only on explicit changes.
-    // But detecting "initial load" vs "change" inside this effect is tricky without ref.
-    // Let's rely on isPlaying state from store, which defaults to false.
-    // Wait, the store persists state? No, it's in-memory.
-    // Let's just try to play if it was playing, OR if it's a new track.
-    
-    // NOTE: Autoplay often fails without user interaction.
-    // We should NOT force autoplay on mount if the user hasn't interacted.
-    // But when switching tracks (user clicked), it should work.
-    
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-        playPromise.catch(error => {
+        playPromise.then(() => {
+            setIsPlaying(true);
+        }).catch(error => {
             console.log("Autoplay prevented:", error);
-            setIsPlaying(false); // Sync state to "paused" if autoplay failed
+            setIsPlaying(false); 
         });
-    } else {
-        // Some older browsers might not return a promise, though rare now
-        setIsPlaying(true);
     }
 
     const updateDuration = () => setDuration(audio.duration);
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onRateChange = () => setPlaybackRate(audio.playbackRate);
-    
-    // Explicitly add loadeddata event to ensure we catch ready state
-    audio.addEventListener('loadeddata', () => {
-        // If the audio is ready and we think we are playing, make sure it is playing
-        if (isPlaying) {
-             audio.play().catch(() => setIsPlaying(false));
-        }
-    });
 
     // Note: We removed 'timeupdate' listener to avoid conflict with requestAnimationFrame loop
     audio.addEventListener('loadedmetadata', updateDuration);

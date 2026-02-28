@@ -97,25 +97,29 @@ export const searchPodcasts = async (term: string) => {
   try {
       const searchUrl = `/api/podcast-search?q=${encodeURIComponent(term)}`;
       const response = await fetch(searchUrl);
-      if (response.ok) {
-          const data = await response.json();
-          if (data.feeds && data.feeds.length > 0) {
-              const results = data.feeds.map((item: any) => ({
-                  title: item.title,
-                  author: item.author,
-                  feedUrl: item.url,
-                  artwork: item.artwork || item.image,
-              }));
-              lastSearchTerm = term;
-              lastSearchResults = results;
-              return results;
-          } else {
-             // If local API returns no results, throw to trigger fallback
-             throw new Error("No results from Podcast Index");
-          }
+      
+      if (!response.ok) {
+        throw new Error(`Primary search API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.feeds && data.feeds.length > 0) {
+          const results = data.feeds.map((item: any) => ({
+              title: item.title,
+              author: item.author,
+              feedUrl: item.url,
+              artwork: item.artwork || item.image,
+          }));
+          lastSearchTerm = term;
+          lastSearchResults = results;
+          return results;
+      } else {
+         // Explicitly throw to trigger fallback
+         console.warn("Primary search returned no results, switching to fallback...");
+         throw new Error("No results from Podcast Index");
       }
   } catch (e) {
-      console.warn("Local API search failed, falling back to iTunes...", e);
+      console.warn("Primary search failed, falling back to iTunes...", e);
   }
 
   // 2. Fallback: iTunes Search API (Direct + Proxy)
