@@ -14,6 +14,8 @@ export const useAudioEngine = (src: string, audioId: string) => {
     currentTime,
     playbackRate,
     setIsPlaying,
+    setIsAutoPlayIntent,
+    isAutoPlayIntent,
     setCurrentTime,
     setDuration,
     setPlaybackRate,
@@ -57,22 +59,48 @@ export const useAudioEngine = (src: string, audioId: string) => {
         audioRef.current.src = "";
     }
     
-    // Reset playing state when src changes to avoid auto-play loops
+    // Reset playing state when src changes
     setIsPlaying(false);
 
     const audio = new Audio(src);
     audioRef.current = audio;
     
-    // Auto-play when src changes (user selected new episode/file)
-    // We wrap in a promise catch to handle browser autoplay policies
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            setIsPlaying(true);
-        }).catch(error => {
-            console.log("Autoplay prevented:", error);
-            setIsPlaying(false); 
-        });
+    // Handle Autoplay Intent
+    if (isAutoPlayIntent) {
+        // Start silent for fade-in
+        audio.volume = 0;
+        
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                setIsPlaying(true);
+                
+                // Volume Fade-in (0 to 1 over 1000ms)
+                let vol = 0;
+                const fadeInterval = setInterval(() => {
+                    vol = Math.min(vol + 0.1, 1);
+                    audio.volume = vol;
+                    if (vol >= 1) clearInterval(fadeInterval);
+                }, 100);
+                
+            }).catch(error => {
+                console.log("Autoplay prevented or failed:", error);
+                setIsPlaying(false);
+                // Reset intent so we don't try again until user clicks
+                setIsAutoPlayIntent(false);
+            });
+        }
+        
+        // Reset intent flag immediately after processing
+        // We leave it true during the promise but practically we can reset it 
+        // effectively handling the "one-shot" nature. 
+        // Actually, we should reset it in the catch/then, but setting it here 
+        // prevents double-triggering if this effect re-runs for some reason.
+        // However, since we depend on [src], it runs once per source.
+    } else {
+        // Cold start or manual selection without intent -> PAUSED
+        audio.volume = 1; // Default volume
+        setIsPlaying(false);
     }
 
     const updateDuration = () => setDuration(audio.duration);

@@ -8,8 +8,10 @@ interface AudioState {
   playbackRate: number;
   anchors: Anchor[];
   hotzones: Hotzone[];
+  isAutoPlayIntent: boolean;
   
   setIsPlaying: (isPlaying: boolean) => void;
+  setIsAutoPlayIntent: (isAutoPlayIntent: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setPlaybackRate: (rate: number) => void;
@@ -25,8 +27,10 @@ export const useAudioStore = create<AudioState>((set) => ({
   playbackRate: 1,
   anchors: [],
   hotzones: [],
+  isAutoPlayIntent: false,
 
   setIsPlaying: (isPlaying) => set({ isPlaying }),
+  setIsAutoPlayIntent: (isAutoPlayIntent) => set({ isAutoPlayIntent }),
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),

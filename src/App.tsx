@@ -94,20 +94,10 @@ function App() {
     setAudioId(safeId);
     setEpisodeTitle(title);
     
-    setCurrentView('player');
+    // Signal intent to auto-play with fade-in
+    useAudioStore.getState().setIsAutoPlayIntent(true);
     
-    // Auto-play when episode is selected
-    setTimeout(() => {
-        // We can't directly call play() on the audio element here easily without ref access to the hook's audio.
-        // But we can trigger the togglePlay if not playing.
-        // Actually, better to let useAudioEngine handle auto-play on src change if configured, 
-        // or just expose a play() method. 
-        // For now, let's rely on user click or try to toggle if paused.
-        // A simple way is to use the store or just let the user click play (consistent with mobile web policies).
-        // User feedback says "it's not reasonable", so let's try to auto-play.
-        // The useAudioEngine hook uses react-use's useAudio.
-        // Let's assume the user interaction (clicking the episode) counts as a gesture.
-    }, 500);
+    setCurrentView('player');
   };
 
   const handleGenerateHotzones = async () => {
