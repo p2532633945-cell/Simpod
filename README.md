@@ -42,6 +42,10 @@ Simpod is an AI-powered podcast player designed for language learners. It featur
 
 See [Deployment Guide](docs/DEPLOYMENT.md) for Vercel configuration and PWA details.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
 ## License
 
 MIT
