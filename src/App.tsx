@@ -5,6 +5,7 @@ import { SmartCruiseControl } from './components/SmartCruiseControl';
 import { ReviewDeck } from './components/ReviewDeck';
 import { PodcastLibrary } from './components/PodcastLibrary';
 import { PodcastDetail } from './components/PodcastDetail';
+import { Waveform } from './components/Waveform';
 import { processAnchorsToHotzones } from './utils/hotzonePipeline';
 import { saveHotzone, fetchHotzones } from './lib/api';
 import { TranscriptSegment } from './types';
@@ -195,21 +196,10 @@ function App() {
            </label>
         </div>
 
-        {/* Audio Visualizer Placeholder */}
-        <div className="h-32 bg-zinc-900 rounded-3xl flex items-center justify-center relative overflow-hidden border border-zinc-800">
-           <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-50">
-             {[...Array(20)].map((_, i) => (
-               <div 
-                 key={i} 
-                 className="w-2 bg-indigo-500 rounded-full transition-all duration-150"
-                 style={{ 
-                   height: isPlaying ? `${Math.random() * 80 + 20}%` : '20%',
-                   opacity: isPlaying ? 1 : 0.3
-                 }} 
-               />
-             ))}
-           </div>
-           <div className="z-10 text-4xl font-mono font-medium tabular-nums">
+        {/* Audio Visualizer */}
+        <div className="h-32 bg-zinc-900 rounded-3xl flex items-center justify-center relative overflow-hidden border border-zinc-800 shadow-inner">
+           <Waveform isPlaying={isPlaying} barCount={24} />
+           <div className="z-10 text-4xl font-mono font-medium tabular-nums text-white drop-shadow-md">
              {formatTime(currentTime)}
            </div>
         </div>
