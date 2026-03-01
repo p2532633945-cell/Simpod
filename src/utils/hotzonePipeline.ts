@@ -58,7 +58,8 @@ export const generateHotzoneFromAnchor = (
 export const processAnchorsToHotzones = async (
   anchors: Anchor[],
   transcript: TranscriptSegment[],
-  audioFile?: File // Optional: Real audio file for processing
+  audioFile?: File, // Optional: Real audio file for processing
+  audioUrl?: string // Optional: Remote URL
 ): Promise<Hotzone[]> => {
   
   // 1. Generate Mechanical Hotzones first
@@ -114,17 +115,19 @@ export const processAnchorsToHotzones = async (
     // Wait, I can't easily change the signature without changing the caller in App.tsx.
     // Let's check App.tsx first.
     
-    // TEMPORARY FIX:
-    // We will assume that if audioFile is missing, we can try to fetch from `window.audioUrl_HACK` or similar? No.
     // Let's import the store to get the current URL.
-    const audioUrl = useAudioStore.getState().audioSrc; // Direct store access
+    // Note: We need to access the App-level state, but 'audioSrc' is currently in App.tsx state, NOT in Zustand.
+    // This is the bug. The build failed because 'audioSrc' is not in AudioState.
+    // 
+    // Fix: We updated the signature to accept 'audioUrl'.
+    // We will use that instead of the store hack.
     
     try {
       let audioSlice: Blob;
       
       if (audioFile) {
           audioSlice = await sliceAudio(audioFile, hz.start_time, hz.end_time);
-      } else if (audioUrl && audioUrl.startsWith('http')) {
+      } else if (audioUrl && typeof audioUrl === 'string' && audioUrl.startsWith('http')) {
           console.log(`[Hotzone] Slicing remote audio: ${audioUrl}`);
           audioSlice = await sliceRemoteAudio(audioUrl, hz.start_time, hz.end_time);
       } else {

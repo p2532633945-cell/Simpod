@@ -113,7 +113,13 @@ function App() {
       // Otherwise, use mock transcript (fallback mode).
       const transcriptToUse = audioFile ? [] : MOCK_TRANSCRIPT; 
       
-      const generated = await processAnchorsToHotzones(anchors, transcriptToUse, audioFile);
+      // Note: We pass 'audioSrc' as the 4th argument now to support remote slicing.
+      const generated = await processAnchorsToHotzones(
+        anchors, 
+        transcriptToUse, 
+        audioFile, 
+        audioSrc
+      );
       
       // Save generated hotzones to Supabase
       await Promise.all(generated.map(hz => saveHotzone(hz)));
