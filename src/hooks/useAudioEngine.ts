@@ -66,7 +66,13 @@ export const useAudioEngine = (src: string, audioId: string, meta?: AudioMeta) =
     }
     
     // Reset playing state when src changes
-    setIsPlaying(false);
+    // If we have an autoplay intent, we set it to TRUE immediately to prevent the 
+    // sync effect from cancelling our play request.
+    if (isAutoPlayIntent) {
+        setIsPlaying(true);
+    } else {
+        setIsPlaying(false);
+    }
 
     const audio = new Audio(src);
     audioRef.current = audio;
@@ -79,8 +85,6 @@ export const useAudioEngine = (src: string, audioId: string, meta?: AudioMeta) =
         const playPromise = audio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                setIsPlaying(true);
-                
                 // Volume Fade-in (0 to 1 over 1000ms)
                 let vol = 0;
                 const fadeInterval = setInterval(() => {
@@ -99,7 +103,7 @@ export const useAudioEngine = (src: string, audioId: string, meta?: AudioMeta) =
     } else {
         // Cold start or manual selection without intent -> PAUSED
         audio.volume = 1; // Default volume
-        setIsPlaying(false);
+        // We already set isPlaying(false) above
     }
 
     const updateDuration = () => setDuration(audio.duration);
