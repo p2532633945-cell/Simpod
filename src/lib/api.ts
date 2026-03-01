@@ -81,9 +81,19 @@ export const fetchRSS = async (url: string): Promise<string> => {
   }
 };
 
+const mapItunesResults = (data: any) => {
+    const results = (data.results || []).map((item: any) => ({
+        title: item.collectionName,
+        author: item.artistName,
+        feedUrl: item.feedUrl,
+        artwork: item.artworkUrl600 || item.artworkUrl100,
+      }));
+    return results;
+}
+
 /**
- * Searches for podcasts using iTunes Search API (Robust Fallback).
- * Reverts to direct/proxy iTunes search if local API is unavailable.
+ * Searches for podcasts using BOTH Podcast Index (via API) AND iTunes (Client-side)
+ * and merges the results.
  */
 let lastSearchTerm = "";
 let lastSearchResults: any[] = [];
@@ -93,70 +103,81 @@ export const searchPodcasts = async (term: string) => {
       return lastSearchResults;
   }
 
-  // 1. Try local Vercel Function (Podcast Index)
-  try {
-      const searchUrl = `/api/podcast-search?q=${encodeURIComponent(term)}`;
-      const response = await fetch(searchUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Primary search API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data.feeds && data.feeds.length > 0) {
-          const results = data.feeds.map((item: any) => ({
-              title: item.title,
-              author: item.author,
-              feedUrl: item.url,
-              artwork: item.artwork || item.image,
-          }));
-          lastSearchTerm = term;
-          lastSearchResults = results;
-          return results;
-      } else {
-         // Explicitly throw to trigger fallback
-         console.warn("Primary search returned no results, switching to fallback...");
-         throw new Error("No results from Podcast Index");
-      }
-  } catch (e) {
-      console.warn("Primary search failed, falling back to iTunes...", e);
-  }
+  console.log(`[Search] Starting hybrid search for: "${term}"`);
 
-  // 2. Fallback: iTunes Search API (Direct + Proxy)
-  const itunesUrl = `https://itunes.apple.com/search?media=podcast&term=${encodeURIComponent(term)}&limit=10`;
-  
-  try {
-      // Try direct first (works in some browsers/cors modes)
-      const response = await fetch(itunesUrl);
-      if (response.ok) {
-          const data = await response.json();
-          return mapItunesResults(data);
-      }
-  } catch (e) {
-      // Try proxy
+  // 1. Define Search Promises
+  const searchPodcastIndex = async () => {
       try {
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(itunesUrl)}`;
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-            const data = await response.json();
-            return mapItunesResults(data);
-        }
-      } catch (err) {
-          throw new Error("Search failed on all channels");
+          const searchUrl = `/api/podcast-search?q=${encodeURIComponent(term)}`;
+          const response = await fetch(searchUrl);
+          if (!response.ok) throw new Error(`Status ${response.status}`);
+          const data = await response.json();
+          if (data.feeds && data.feeds.length > 0) {
+              return data.feeds.map((item: any) => ({
+                  title: item.title,
+                  author: item.author,
+                  feedUrl: item.url,
+                  artwork: item.artwork || item.image,
+                  source: 'podcastindex'
+              }));
+          }
+      } catch (e) {
+          console.warn("[Search] Podcast Index failed:", e);
+      }
+      return [];
+  };
+
+  const searchItunes = async () => {
+      const itunesUrl = `https://itunes.apple.com/search?media=podcast&term=${encodeURIComponent(term)}&limit=10`;
+      try {
+          // Try direct
+          const response = await fetch(itunesUrl);
+          if (response.ok) {
+              const data = await response.json();
+              return mapItunesResults(data).map((r: any) => ({...r, source: 'itunes'}));
+          }
+      } catch (e) {
+          console.warn("[Search] iTunes direct failed, trying proxy...", e);
+          // Try proxy
+          try {
+              const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(itunesUrl)}`;
+              const response = await fetch(proxyUrl);
+              if (response.ok) {
+                  const data = await response.json();
+                  return mapItunesResults(data).map((r: any) => ({...r, source: 'itunes'}));
+              }
+          } catch (err) {
+              console.warn("[Search] iTunes proxy failed:", err);
+          }
+      }
+      return [];
+  };
+
+  // 2. Execute in Parallel
+  const [piResults, itunesResults] = await Promise.all([
+      searchPodcastIndex(),
+      searchItunes()
+  ]);
+
+  console.log(`[Search] Results - PI: ${piResults.length}, iTunes: ${itunesResults.length}`);
+
+  // 3. Merge & Deduplicate
+  const allResults = [...piResults, ...itunesResults];
+  const uniqueResults = [];
+  const seenUrls = new Set();
+
+  for (const r of allResults) {
+      if (r.feedUrl && !seenUrls.has(r.feedUrl)) {
+          seenUrls.add(r.feedUrl);
+          uniqueResults.push(r);
       }
   }
-  return [];
+
+  if (uniqueResults.length > 0) {
+      lastSearchTerm = term;
+      lastSearchResults = uniqueResults;
+      return uniqueResults;
+  }
+  
+  throw new Error("No results found on any platform.");
 };
-
-const mapItunesResults = (data: any) => {
-    const results = (data.results || []).map((item: any) => ({
-        title: item.collectionName,
-        author: item.artistName,
-        feedUrl: item.feedUrl,
-        artwork: item.artworkUrl600 || item.artworkUrl100,
-      }));
-    lastSearchTerm = ""; // Don't cache iTunes results aggressively
-    lastSearchResults = results;
-    return results;
-}
-

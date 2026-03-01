@@ -18,7 +18,7 @@ interface Episode {
 interface PodcastDetailProps {
   feedUrl: string;
   onBack: () => void;
-  onPlayEpisode: (url: string, id: string, title: string) => void;
+  onPlayEpisode: (url: string, id: string, title: string, meta?: { artist: string; artwork: string }) => void;
 }
 
 export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, onPlayEpisode }) => {
@@ -148,7 +148,15 @@ export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, o
                    <Calendar size={12} /> {new Date(item.pubDate).toLocaleDateString()}
                 </span>
                 <button 
-                  onClick={() => onPlayEpisode(item.enclosure?.url, item.guid, item.title)}
+                  onClick={() => onPlayEpisode(
+                    item.enclosure?.url, 
+                    item.guid, 
+                    item.title, 
+                    { 
+                      artist: feed.itunes?.author || feed.creator || "Simpod", 
+                      artwork: feed.image?.url 
+                    }
+                  )}
                   className="bg-zinc-800 text-zinc-300 p-2 rounded-full hover:bg-indigo-600 hover:text-white transition-all"
                 >
                   <Play size={16} fill="currentColor" />

@@ -30,10 +30,11 @@ function App() {
   const [audioFile, setAudioFile] = useState<File | undefined>(undefined);
   const [audioId, setAudioId] = useState<string>(DEFAULT_AUDIO_ID);
   const [episodeTitle, setEpisodeTitle] = useState<string>("Demo Audio");
+  const [audioMeta, setAudioMeta] = useState<{ title: string; artist: string; artwork?: string } | undefined>(undefined);
   
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const { togglePlay, addAnchor, seek } = useAudioEngine(audioSrc, audioId);
+  const { togglePlay, addAnchor, seek } = useAudioEngine(audioSrc, audioId, audioMeta);
   const { 
     isPlaying, 
     currentTime, 
@@ -80,7 +81,7 @@ function App() {
     setCurrentView('podcast-detail');
   };
 
-  const handlePlayEpisode = (url: string, id: string, title: string) => {
+  const handlePlayEpisode = (url: string, id: string, title: string, meta?: { artist: string; artwork: string }) => {
     setAudioSrc(url);
     // For remote streams, we don't have a File object, so audioFile is undefined.
     // Our hotzone pipeline handles this by skipping local slicing if audioFile is missing,
@@ -93,6 +94,11 @@ function App() {
     const safeId = `podcast-${id.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}`;
     setAudioId(safeId);
     setEpisodeTitle(title);
+    setAudioMeta({
+        title,
+        artist: meta?.artist || "Simpod",
+        artwork: meta?.artwork
+    });
     
     // Signal intent to auto-play with fade-in
     useAudioStore.getState().setIsAutoPlayIntent(true);

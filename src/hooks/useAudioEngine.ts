@@ -6,7 +6,13 @@ import { saveAnchor } from '../lib/api';
 // Simple UUID generator if uuid package is not installed (it wasn't in my install list)
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-export const useAudioEngine = (src: string, audioId: string) => {
+interface AudioMeta {
+    title: string;
+    artist: string;
+    artwork?: string;
+}
+
+export const useAudioEngine = (src: string, audioId: string, meta?: AudioMeta) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const {
@@ -90,13 +96,6 @@ export const useAudioEngine = (src: string, audioId: string) => {
                 setIsAutoPlayIntent(false);
             });
         }
-        
-        // Reset intent flag immediately after processing
-        // We leave it true during the promise but practically we can reset it 
-        // effectively handling the "one-shot" nature. 
-        // Actually, we should reset it in the catch/then, but setting it here 
-        // prevents double-triggering if this effect re-runs for some reason.
-        // However, since we depend on [src], it runs once per source.
     } else {
         // Cold start or manual selection without intent -> PAUSED
         audio.volume = 1; // Default volume
@@ -114,18 +113,8 @@ export const useAudioEngine = (src: string, audioId: string) => {
     audio.addEventListener('pause', onPause);
     audio.addEventListener('ratechange', onRateChange);
 
-    // Setup Media Session
+    // Setup Media Session (Basic Actions)
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: 'Simpod Session',
-        artist: 'Simpod',
-        album: 'Blind Marking',
-        artwork: [
-          { src: 'https://via.placeholder.com/96', sizes: '96x96', type: 'image/png' },
-          { src: 'https://via.placeholder.com/128', sizes: '128x128', type: 'image/png' },
-        ]
-      });
-
       navigator.mediaSession.setActionHandler('play', () => audio.play());
       navigator.mediaSession.setActionHandler('pause', () => audio.pause());
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
@@ -134,11 +123,6 @@ export const useAudioEngine = (src: string, audioId: string) => {
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
         audio.currentTime = Math.min(audio.currentTime + (details.seekOffset || 10), audio.duration);
       });
-      // Use 'nexttrack' as the hardware button trigger for "Add Anchor"
-      // Note: We are using a simplified handler here inside the effect to avoid closure staleness issues with handleAddAnchor if we moved it out.
-      // But actually, handleAddAnchor is defined ABOVE now (hoisted via useCallback?), wait no.
-      // In JS, const variables are not hoisted. We MUST define handleAddAnchor BEFORE using it in useEffect.
-      // OR use a ref for the handler.
     }
 
     return () => {
@@ -152,12 +136,33 @@ export const useAudioEngine = (src: string, audioId: string) => {
     };
   }, [src]); // Re-run only when src changes
 
-  // Separate effect to update Media Session Next Track handler when audioId changes or handleAddAnchor changes
-  // This needs to be AFTER handleAddAnchor definition
+  // Update Media Session Metadata
   useEffect(() => {
       if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+              title: meta?.title || 'Simpod Session',
+              artist: meta?.artist || 'Simpod',
+              album: 'Blind Marking',
+              artwork: meta?.artwork ? [{ src: meta.artwork, sizes: '512x512', type: 'image/jpeg' }] : [
+                  { src: 'https://placehold.co/512x512/000000/FFFFFF.png?text=Simpod', sizes: '512x512', type: 'image/png' }
+              ]
+          });
+      }
+  }, [meta]);
+
+  // Update Media Session Custom Handlers (Next/Prev Track)
+  useEffect(() => {
+      if ('mediaSession' in navigator) {
+        // Next Track -> Add Anchor
         navigator.mediaSession.setActionHandler('nexttrack', () => {
             handleAddAnchor('manual');
+        });
+        // Previous Track -> Rewind 10s (Custom behavior)
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+            if (audioRef.current) {
+                audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 10, 0);
+                // setCurrentTime will be updated by tick loop, but explicit update is fine too
+            }
         });
       }
   }, [audioId, handleAddAnchor]);
@@ -230,8 +235,6 @@ export const useAudioEngine = (src: string, audioId: string) => {
       setPlaybackRate(rate);
     }
   }, [setPlaybackRate]);
-
-  // handleAddAnchor moved ABOVE useEffect to fix ReferenceError
 
   return {
     togglePlay,

@@ -2,29 +2,41 @@
 
 ## 2026-02-28 开发总结
 
-### 🌟 里程碑
-成功将项目从纯前端开发环境迁移至 **Vercel Serverless** 架构，实现了稳定的生产环境部署，并支持了 PWA（渐进式 Web 应用）。
+### 🌟 今日成就 (Achievements)
+*   **架构升级 (Vercel Serverless)**: 成功迁移至 Vercel Serverless 架构，解决了跨域 (CORS) 问题，建立了生产环境与本地开发的混合 API 策略。
+*   **PWA 支持 (Mobile App Experience)**: 实现了 PWA 功能，支持“添加到主屏幕”，提供类似原生 App 的离线和沉浸式体验。
+*   **UI/UX 优化 (Fluid Design)**:
+    *   移除了遮挡界面的 Trae Solo 悬浮按钮。
+    *   重写了音频波形组件，实现了 Apple Music 风格的丝滑律动效果（解耦真实音频，提升性能）。
+    *   实现了播放器“点击即播”与“音量淡入”效果，解决了 PWA 初始化卡死问题。
+*   **CI/CD 自动化**: 配置了 GitHub 与 Vercel 的自动部署流水线，实现 `git push` 即发布的现代化开发流程。
 
-### 🚀 核心功能与架构更新
-1.  **混合 API 架构 (Hybrid API Strategy)**
-    *   **生产环境**：使用 Vercel Serverless Functions (`api/`) 代理 Podcast Index 搜索请求，彻底解决 CORS 跨域问题。
-    *   **本地开发**：保留了基于公共代理 (corsproxy.io) 和 iTunes API 的降级方案，确保本地 `npm run dev` 也能正常运行。
-    *   **智能搜索优化**：实现了搜索降级策略。当 Podcast Index (严格匹配) 无结果时，自动切换至 iTunes API (模糊匹配)，修复了 "6minutes" 等关键词搜索失败的问题。
+### 🐛 遗留问题 (Known Issues)
+*   **搜索问题**: "6minutes" 关键字搜索仍然无法返回正确结果 (BBC 6 Minute English)。虽然尝试了降级策略，但似乎未生效或匹配逻辑仍有问题。**[明天首要任务]**
 
-2.  **PWA 支持 (Progressive Web App)**
-    *   配置了 `vite-plugin-pwa`。
-    *   添加了 `manifest.json` 和应用图标。
-    *   支持“添加到主屏幕”，提供原生 App 般的沉浸式体验（无地址栏）。
+### 📅 明日计划 (Next Steps)
+1.  **彻底修复 "6minutes" 搜索问题**: 调试 API 响应，可能需要强制针对特定无结果查询进行 iTunes 模糊搜索，或者检查 fallback 触发条件。
+2.  **PWA 深度测试**: 验证离线缓存策略是否过于激进或无效。
+3.  **播放器细节**: 检查锁屏控制 (Media Session API) 在不同机型上的表现。
 
-3.  **UI/UX 优化**
-    *   **移动端适配**：移除了遮挡界面的 `vite-plugin-trae-solo-badge`，修复了手机端底部布局变形的问题。
-    *   **播放器修复**：解决了波形图和进度条“僵硬”的问题，确保播放状态与 UI 实时同步。
-    *   **Vercel 部署**：解决了白屏问题（环境变量配置），并输出了详细的 [部署文档](docs/DEPLOYMENT.md)。
+---
+*记录人：Trae AI Assistant*
 
-### 🐛 问题修复
-*   修复了 Vercel 部署后的中文乱码和 API 请求 500 错误。
-*   修复了本地开发环境与 `vite-plugin-vercel` 的冲突。
-*   优化了 `User-Agent` 设置，符合 API 提供商的规范。
+## 2026-03-01 开发总结
+
+### 🌟 今日成就 (Achievements)
+*   **混合搜索 (Hybrid Search Strategy)**: 彻底解决了 "6minutes" 搜索问题。实现了并行查询 Podcast Index 和 iTunes API，并将结果去重合并。这确保了即使主 API 响应不完整，用户也能通过 iTunes 获得准确结果 (如 BBC 6 Minute English)。
+*   **锁屏控制增强 (Enhanced Lock Screen Controls)**:
+    *   实现了 `navigator.mediaSession` 的完整支持，包括动态更新锁屏界面的标题、艺术家和封面图。
+    *   新增了硬件 "上一曲" (Previous Track) 按钮的处理逻辑，使其功能为 "后退10秒"，更符合语言学习场景。
+    *   保留了 "下一曲" (Next Track) 按钮作为 "添加标记" (Add Anchor) 的快捷键，方便盲操作。
+
+### 🐛 遗留问题 (Known Issues)
+*   **PWA 离线音频**: 目前 PWA 仅缓存应用壳 (App Shell)，对于在线流媒体音频尚未实现离线缓存。未来可能需要考虑 Service Worker 的运行时缓存策略或显式下载功能。
+
+### 📅 明日计划 (Next Steps)
+1.  **用户验证**: 等待用户反馈搜索和锁屏控制的实际体验。
+2.  **转写功能调研**: 开始探索 Layer 2 (Contextual Alignment) 的实现方案，尝试本地 Whisper 或更精准的时间戳对齐算法。
 
 ---
 *记录人：Trae AI Assistant*
