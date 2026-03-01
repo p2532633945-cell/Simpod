@@ -5,7 +5,12 @@
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
-export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
+export interface TranscriptionResult {
+    text: string;
+    words: Array<{ word: string; start: number; end: number }>;
+}
+
+export const transcribeAudio = async (audioBlob: Blob): Promise<TranscriptionResult> => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -16,7 +21,8 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
   // Append the file. Important: Groq requires a filename, usually ending in .wav or .mp3
   formData.append('file', audioBlob, 'hotzone.wav');
   formData.append('model', 'whisper-large-v3'); // Groq's high-performance model
-  formData.append('response_format', 'text'); // We just need the text for the snippet
+  formData.append('response_format', 'verbose_json'); // Need verbose_json for timestamps
+  formData.append('timestamp_granularities[]', 'word'); // Request word-level timestamps
 
   try {
     const response = await fetch(GROQ_API_URL, {
@@ -34,8 +40,11 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
       throw new Error(`Groq API Error (${response.status}): ${errorText}`);
     }
 
-    const text = await response.text();
-    return text.trim();
+    const data = await response.json();
+    return {
+        text: data.text.trim(),
+        words: data.words || []
+    };
   } catch (error) {
     console.error("Transcription failed:", error);
     throw error;

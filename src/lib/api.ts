@@ -43,6 +43,65 @@ export const fetchHotzones = async (audioId: string) => {
   return data as Hotzone[];
 };
 
+export const findExistingTranscript = async (audioId: string, startTime: number, endTime: number) => {
+    // Look for any transcript that overlaps with the requested range
+    // We will do a smarter client-side check after fetching candidates.
+    // Fetch any transcript where (start <= requested_end) AND (end >= requested_start)
+    const { data, error } = await supabase
+      .from('transcripts')
+      .select('*')
+      .eq('audio_id', audioId)
+      .lte('start_time', endTime)
+      .gte('end_time', startTime);
+  
+    if (error) {
+      console.error('Error finding transcript:', error);
+      return null;
+    }
+    
+    // Find the best match: one that fully covers the requested range
+    if (data && data.length > 0) {
+        // Tolerance: 1 second
+        const perfectMatch = data.find(t => 
+            t.start_time <= startTime + 1 && 
+            t.end_time >= endTime - 1
+        );
+        if (perfectMatch) return perfectMatch;
+
+        // Future TODO: Stitch multiple partial transcripts together?
+        // For MVP, if no single transcript covers the whole range, we treat it as a "miss" and re-transcribe.
+        // Or we could return the best partial match, but that might lead to incomplete sentences.
+    }
+    
+    return null;
+};
+
+export const saveTranscript = async (
+    audioId: string, 
+    startTime: number, 
+    endTime: number, 
+    text: string, 
+    words: any
+) => {
+    const { data, error } = await supabase
+      .from('transcripts')
+      .insert({
+          audio_id: audioId,
+          start_time: startTime,
+          end_time: endTime,
+          text,
+          words
+      })
+      .select()
+      .single();
+      
+    if (error) {
+        console.error('Error saving transcript:', error);
+        // Don't throw, just log. Saving transcript is a side-effect optimization.
+    }
+    return data;
+};
+
 /**
  * Fetches RSS feed content, robustly handling CORS via public proxies (Fallback for local dev).
  */

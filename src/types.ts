@@ -6,12 +6,20 @@ export interface Anchor {
   created_at: string;
 }
 
+export interface WordTimestamp {
+  word: string;
+  start: number;
+  end: number;
+  confidence?: number;
+}
+
 export interface Hotzone {
   id: string;
   audio_id: string;
   start_time: number; // in seconds
   end_time: number; // in seconds
   transcript_snippet: string;
+  transcript_words?: WordTimestamp[]; // For word-level highlighting
   source: 'manual' | 'auto';
   metadata: {
     confidence?: number;
