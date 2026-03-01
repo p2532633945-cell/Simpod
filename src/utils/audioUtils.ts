@@ -7,74 +7,44 @@
  */
 
 /**
- * Fetches a slice of a remote audio file using HTTP Range requests.
+ * Fetches a slice of a remote audio file using HTTP Range requests via a CORS proxy.
  * Returns a Blob containing the sliced audio (WAV format).
  */
 export const sliceRemoteAudio = async (url: string, startTime: number, endTime: number): Promise<Blob> => {
-    // 1. Estimate byte range (Crude estimation)
-    // Most podcasts are MP3 128kbps (16KB/s) or 64kbps (8KB/s).
-    // To be safe, we'll fetch a larger chunk.
-    // Ideally, we'd fetch the header first to get the bitrate, but that adds latency.
-    // Let's assume 192kbps (24KB/s) as a safe upper bound for high quality, 
-    // plus some buffer.
-    const BITRATE_ESTIMATE = 24 * 1024; // 24KB/s
-    const BUFFER_SECONDS = 10; // Extra buffer before/after
-    
-    const startByte = Math.max(0, Math.floor((startTime - BUFFER_SECONDS) * BITRATE_ESTIMATE));
+    // 1. Estimate End Byte
+    // We fetch from byte 0 to the end of the segment to ensure we get the file header.
+    // This allows AudioContext.decodeAudioData to work correctly (it needs headers).
+    // It's less efficient than a precise range but much more robust than trying to decode a headerless chunk.
+    const BITRATE_ESTIMATE = 32 * 1024; // 32KB/s (256kbps) - Conservative high estimate
+    const BUFFER_SECONDS = 10; 
     const endByte = Math.floor((endTime + BUFFER_SECONDS) * BITRATE_ESTIMATE);
     
-    console.log(`[RemoteSlice] Fetching bytes ${startByte}-${endByte} for time ${startTime}-${endTime}`);
+    // 2. Use CORS Proxy to handle Mixed Content (HTTP source on HTTPS site) and CORS headers
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    
+    console.log(`[RemoteSlice] Fetching 0-${endByte} bytes from ${url} via proxy...`);
 
     try {
-        const response = await fetch(url, {
+        const response = await fetch(proxyUrl, {
             headers: {
-                'Range': `bytes=${startByte}-${endByte}`
+                'Range': `bytes=0-${endByte}`
             }
         });
 
-        if (!response.ok && response.status !== 206) {
-             // Fallback: If Range not supported (200 OK or 4xx), we might get the whole file or fail.
-             // If 200, we got the whole file (heavy!).
-             // If we got the whole file, we can still slice it, but it's slow.
-             console.warn("[RemoteSlice] Server didn't respect Range request or returned error.", response.status);
+        if (!response.ok) {
+             throw new Error(`Proxy Fetch failed: ${response.status} ${response.statusText}`);
         }
 
         const arrayBuffer = await response.arrayBuffer();
         
-        // 2. Decode and Slice precisely
-        // Note: The fetched chunk might not start exactly at 'startTime' due to bitrate VBR.
-        // We decode the chunk, and then we need to find where our desired audio is.
-        // Since we don't know the exact time offset of the *chunk* we fetched (without parsing MP3 frames),
-        // this is tricky. 
-        //
-        // BETTER APPROACH for MVP:
-        // Web Audio decodeAudioData() expects a full file header usually. 
-        // Feeding it a middle chunk of MP3 might fail.
-        //
-        // ALTERNATIVE: Use a CORS proxy that supports full file fetching but we rely on browser cache?
-        // Or, for MVP, we just fetch the whole file if it's < 50MB?
-        //
-        // REVISED STRATEGY:
-        // We will try to fetch the *whole* file if possible, or at least a very large chunk from 0.
-        // Since we can't easily decode a random MP3 chunk in Web Audio without the header.
-        // 
-        // WAIT: decodeAudioData IS resilient. But we need the header.
-        // Let's fetch from 0 to 'endByte'. It's inefficient but safer than full file.
-        // But 'endByte' could be 50MB into the file.
+        // 3. Decode the partial file (Header is present since we started at 0)
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
-        // Let's try fetching the whole file for now. It's the most robust way to ensure decodeAudioData works.
-        // Browsers cache this heavily.
-        // If the user has already played it, it might be in disk cache.
+        // Decode might fail if the file is truncated mid-frame, but usually browsers handle it.
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         
-        // Let's assume we pass the URL to the existing sliceAudio? No, sliceAudio takes a File object.
-        // We need to fetch it to a Blob.
-        
-        console.log(`[RemoteSlice] Downloading full file for robust slicing...`);
-        const fullResponse = await fetch(url);
-        const fullBlob = await fullResponse.blob();
-        const fullFile = new File([fullBlob], "remote_audio.mp3", { type: "audio/mpeg" });
-        
-        return sliceAudio(fullFile, startTime, endTime);
+        // 4. Slice to the exact requested time
+        return sliceAudioBuffer(audioBuffer, startTime, endTime, audioContext);
         
     } catch (e) {
         console.error("Remote slice failed:", e);
@@ -87,9 +57,13 @@ export const sliceAudio = async (file: File, startTime: number, endTime: number)
   const arrayBuffer = await file.arrayBuffer();
   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
+  return sliceAudioBuffer(audioBuffer, startTime, endTime, audioContext);
+};
+
+const sliceAudioBuffer = async (audioBuffer: AudioBuffer, startTime: number, endTime: number, audioContext: AudioContext): Promise<Blob> => {
   const sampleRate = audioBuffer.sampleRate;
-  const startFrame = Math.floor(startTime * sampleRate);
-  const endFrame = Math.floor(endTime * sampleRate);
+  const startFrame = Math.max(0, Math.floor(startTime * sampleRate));
+  const endFrame = Math.min(audioBuffer.length, Math.floor(endTime * sampleRate));
   const frameCount = endFrame - startFrame;
 
   if (frameCount <= 0) {
