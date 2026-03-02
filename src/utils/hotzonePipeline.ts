@@ -202,11 +202,14 @@ export const processAnchorsToHotzones = async (
                 start_time: newStartTime, 
                 end_time: newEndTime, 
                 transcript_snippet: text,
-                transcript_words: words.map(w => ({
-                    ...w,
-                    start: hz.start_time + w.start, // Map to global time
-                    end: hz.start_time + w.end
-                }))
+                metadata: {
+                    ...hz.metadata,
+                    transcript_words: words.map(w => ({
+                        ...w,
+                        start: hz.start_time + w.start, // Map to global time
+                        end: hz.start_time + w.end
+                    }))
+                }
             };
         }
       }
