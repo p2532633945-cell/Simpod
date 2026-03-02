@@ -31,6 +31,7 @@ function App() {
   const [audioId, setAudioId] = useState<string>(DEFAULT_AUDIO_ID);
   const [episodeTitle, setEpisodeTitle] = useState<string>("Demo Audio");
   const [audioMeta, setAudioMeta] = useState<{ title: string; artist: string; artwork?: string } | undefined>(undefined);
+  const [currentTranscript, setCurrentTranscript] = useState<{ url: string; type: string } | undefined>(undefined);
   
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -81,7 +82,13 @@ function App() {
     setCurrentView('podcast-detail');
   };
 
-  const handlePlayEpisode = (url: string, id: string, title: string, meta?: { artist: string; artwork: string }) => {
+  const handlePlayEpisode = (
+    url: string, 
+    id: string, 
+    title: string, 
+    meta?: { artist: string; artwork: string }, 
+    transcript?: { url: string; type: string }
+  ) => {
     setAudioSrc(url);
     // For remote streams, we don't have a File object, so audioFile is undefined.
     // Our hotzone pipeline handles this by skipping local slicing if audioFile is missing,
@@ -99,6 +106,11 @@ function App() {
         artist: meta?.artist || "Simpod",
         artwork: meta?.artwork
     });
+    
+    setCurrentTranscript(transcript);
+    if (transcript) {
+        console.log("Found official transcript for this episode:", transcript);
+    }
     
     // Signal intent to auto-play with fade-in
     useAudioStore.getState().setIsAutoPlayIntent(true);
@@ -118,7 +130,8 @@ function App() {
         anchors, 
         transcriptToUse, 
         audioFile, 
-        audioSrc
+        audioSrc,
+        currentTranscript
       );
       
       // Save generated hotzones to Supabase

@@ -7,8 +7,8 @@
  */
 
 /**
- * Fetches a slice of a remote audio file using HTTP Range requests via a CORS proxy.
- * Returns a Blob containing the sliced audio (WAV format).
+ * Fetches a slice of a remote audio file using our custom Vercel Proxy.
+ * This handles CORS, Mixed Content, and Range Requests robustly.
  */
 export const sliceRemoteAudio = async (url: string, startTime: number, endTime: number): Promise<Blob> => {
     // 1. Estimate End Byte
@@ -19,10 +19,12 @@ export const sliceRemoteAudio = async (url: string, startTime: number, endTime: 
     const BUFFER_SECONDS = 10; 
     const endByte = Math.floor((endTime + BUFFER_SECONDS) * BITRATE_ESTIMATE);
     
-    // 2. Use CORS Proxy to handle Mixed Content (HTTP source on HTTPS site) and CORS headers
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    // 2. Use our custom Vercel Proxy
+    // Note: In development (localhost), this calls the local API route.
+    // In production, it calls the deployed Vercel Function.
+    const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
     
-    console.log(`[RemoteSlice] Fetching 0-${endByte} bytes from ${url} via proxy...`);
+    console.log(`[RemoteSlice] Fetching 0-${endByte} bytes from ${url} via /api/audio-proxy...`);
 
     try {
         const response = await fetch(proxyUrl, {

@@ -13,12 +13,14 @@ interface Episode {
     type?: string;
   };
   guid: string;
+  transcriptUrl?: string;
+  transcriptType?: string;
 }
 
 interface PodcastDetailProps {
   feedUrl: string;
   onBack: () => void;
-  onPlayEpisode: (url: string, id: string, title: string, meta?: { artist: string; artwork: string }) => void;
+  onPlayEpisode: (url: string, id: string, title: string, meta?: { artist: string; artwork: string }, transcript?: { url: string; type: string }) => void;
 }
 
 export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, onPlayEpisode }) => {
@@ -58,15 +60,26 @@ export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, o
              if (imageTag) imageUrl = imageTag.getAttribute("href") || imageTag.querySelector("url")?.textContent || "";
         }
         
-        const items = Array.from(xmlDoc.querySelectorAll("item")).map(item => ({
-            title: item.querySelector("title")?.textContent || "",
-            pubDate: item.querySelector("pubDate")?.textContent || "",
-            guid: item.querySelector("guid")?.textContent || Math.random().toString(),
-            enclosure: {
-                url: item.querySelector("enclosure")?.getAttribute("url") || "",
-                type: item.querySelector("enclosure")?.getAttribute("type") || "",
-            }
-        }));
+        const items = Array.from(xmlDoc.querySelectorAll("item")).map(item => {
+            // Extract transcript tag (podcast:transcript)
+            // Note: getElementsByTagName handles namespaced tags differently in browsers.
+            // "podcast:transcript" usually works in XML mode.
+            const transcriptTag = item.getElementsByTagName("podcast:transcript")[0];
+            const transcriptUrl = transcriptTag?.getAttribute("url") || undefined;
+            const transcriptType = transcriptTag?.getAttribute("type") || undefined;
+
+            return {
+                title: item.querySelector("title")?.textContent || "",
+                pubDate: item.querySelector("pubDate")?.textContent || "",
+                guid: item.querySelector("guid")?.textContent || Math.random().toString(),
+                enclosure: {
+                    url: item.querySelector("enclosure")?.getAttribute("url") || "",
+                    type: item.querySelector("enclosure")?.getAttribute("type") || "",
+                },
+                transcriptUrl,
+                transcriptType
+            };
+        });
 
         setFeed({
             title,
@@ -146,6 +159,7 @@ export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, o
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs text-zinc-500 flex items-center gap-1">
                    <Calendar size={12} /> {new Date(item.pubDate).toLocaleDateString()}
+                   {item.transcriptUrl && <span className="ml-2 text-green-500 text-[10px] border border-green-500/30 px-1 rounded">Transcript</span>}
                 </span>
                 <button 
                   onClick={() => onPlayEpisode(
@@ -155,7 +169,8 @@ export const PodcastDetail: React.FC<PodcastDetailProps> = ({ feedUrl, onBack, o
                     { 
                       artist: feed.itunes?.author || feed.creator || "Simpod", 
                       artwork: feed.image?.url 
-                    }
+                    },
+                    item.transcriptUrl ? { url: item.transcriptUrl, type: item.transcriptType || 'text/plain' } : undefined
                   )}
                   className="bg-zinc-800 text-zinc-300 p-2 rounded-full hover:bg-indigo-600 hover:text-white transition-all"
                 >

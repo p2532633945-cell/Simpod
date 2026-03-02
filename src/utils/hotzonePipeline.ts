@@ -59,7 +59,8 @@ export const processAnchorsToHotzones = async (
   anchors: Anchor[],
   transcript: TranscriptSegment[],
   audioFile?: File, // Optional: Real audio file for processing
-  audioUrl?: string // Optional: Remote URL
+  audioUrl?: string, // Optional: Remote URL
+  transcriptInfo?: { url: string; type: string } // Optional: Official transcript
 ): Promise<Hotzone[]> => {
   
   // 1. Generate Mechanical Hotzones first
@@ -97,6 +98,11 @@ export const processAnchorsToHotzones = async (
 
   // 4. Process hotzones (transcribe if audio file exists, or use transcript fallback)
   console.log(`Starting batch transcription for ${mergedHotzones.length} hotzones...`);
+  if (transcriptInfo) {
+      console.log(`[Transcript] Official transcript detected at: ${transcriptInfo.url} (${transcriptInfo.type})`);
+      // Future TODO: Implement fetching and parsing of official transcript here to skip Groq.
+      // For now, we still fall back to Groq/Slicing but log the opportunity.
+  }
   
   const processedHotzones = await Promise.all(mergedHotzones.map(async (hz) => {
     // Determine source: Local File or Remote URL?
