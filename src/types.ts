@@ -22,6 +22,7 @@ export interface Hotzone {
   transcript_words?: WordTimestamp[]; // For word-level highlighting
   source: 'manual' | 'auto';
   metadata: {
+    transcript_words?: WordTimestamp[];
     confidence?: number;
     difficulty_score?: number;
     user_adjustment_history?: Array<{
