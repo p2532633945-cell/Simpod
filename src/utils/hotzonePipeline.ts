@@ -178,7 +178,7 @@ export const processAnchorsToHotzones = async (
       if (!original) return hz; // Should not happen
 
       let newText = original.transcript_snippet;
-      let newWords = original.metadata.transcript_words || [];
+      let newWords = original.transcript_words || [];
 
       // Diff Left
       if (hz.start_time < original.start_time) {
@@ -197,9 +197,9 @@ export const processAnchorsToHotzones = async (
       return {
           ...hz,
           transcript_snippet: newText,
+          transcript_words: newWords,
           metadata: {
               ...hz.metadata,
-              transcript_words: newWords,
               user_adjustment_history: [
                   ...(hz.metadata.user_adjustment_history || []),
                   { action: 'expand', timestamp: new Date().toISOString() }
@@ -289,13 +289,13 @@ export const processAnchorsToHotzones = async (
                 start_time: newStartTime, 
                 end_time: newEndTime, 
                 transcript_snippet: text,
-                metadata: {
-                    ...hz.metadata,
-                    transcript_words: words.map(w => ({
+                transcript_words: words.map(w => ({
                         ...w,
                         start: hz.start_time + w.start,
                         end: hz.start_time + w.end
-                    }))
+                })),
+                metadata: {
+                    ...hz.metadata,
                 }
             };
         }
