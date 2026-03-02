@@ -2,7 +2,6 @@ import { Anchor, Hotzone, TranscriptSegment } from '../types';
 import { sliceAudio, sliceRemoteAudio } from './audioUtils';
 import { transcribeAudio } from '../lib/groqService';
 import { findExistingTranscript, saveTranscript } from '../lib/api';
-import { useAudioStore } from '../store/useAudioStore';
 
 // Simple UUID generator
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -85,7 +84,7 @@ export const processAnchorsToHotzones = async (
   }
 
   // 1. Generate Mechanical Hotzones first
-  let hotzones = newAnchors.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
+  const hotzones = newAnchors.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
 
   // 2. Sort by start time
   hotzones.sort((a, b) => a.start_time - b.start_time);

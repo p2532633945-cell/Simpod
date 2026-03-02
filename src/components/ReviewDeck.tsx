@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Hotzone, TranscriptSegment } from '../types';
-import { ChevronLeft, ChevronRight, X, Play, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Play } from 'lucide-react';
 
 interface ReviewDeckProps {
   hotzones: Hotzone[];

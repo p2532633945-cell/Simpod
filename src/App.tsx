@@ -38,6 +38,7 @@ function App() {
   const { togglePlay, addAnchor, seek } = useAudioEngine(audioSrc, audioId, audioMeta);
   const { 
     isPlaying, 
+    setIsPlaying,
     currentTime, 
     duration, 
     anchors, 
