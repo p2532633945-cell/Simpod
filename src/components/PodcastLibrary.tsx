@@ -23,6 +23,12 @@ export const PodcastLibrary: React.FC<PodcastLibraryProps> = ({ onSelectPodcast 
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
+    // Check if input is a direct RSS URL
+    if (searchTerm.startsWith('http')) {
+        onSelectPodcast(searchTerm);
+        return;
+    }
+
     setLoading(true);
     setError(null);
     try {
