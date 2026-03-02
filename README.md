@@ -2,6 +2,11 @@
 
 Simpod is an AI-powered podcast player designed for language learners. It features "Smart Cruise" mode, which automatically detects and loops key vocabulary segments ("Hotzones") in podcasts.
 
+## Current Status (v0.3.1)
+- **Transcription**: Powered by Groq/Whisper (Fast, Local-First fallback).
+- **Playback**: Smart "Backtrack" (J key) and Review Deck.
+- **Data**: Idempotent Hotzone generation with Smart Extension logic.
+
 ## Features
 
 - **RSS Podcast Aggregator**: Search and subscribe to any podcast (via iTunes & Podcast Index).

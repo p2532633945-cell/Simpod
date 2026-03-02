@@ -2,9 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.3.1] - 2026-03-02
+### Added
+- **Smart Hotzone Extension**: Automatically extends existing hotzones when new anchors are added near their boundaries, preventing duplicate segments.
+- **Direct RSS Input**: Support for pasting RSS feed URLs directly into the search bar in Podcast Library.
 
-## [0.1.0] - 2026-02-28
+### Fixed
+- **Hotzone Schema**: Resolved `transcript_words` column error by correctly nesting it within `metadata` JSONB.
+- **RSS Proxy**: Fixed 500 errors by adding proper User-Agent headers and URL decoding.
+
+## [0.3.0] - 2026-03-02
+> **Tag**: `v0.3.0-baseline` (Commit: `7642595`)
+
+### Milestone: MVP Core Features
+This release marks the completion of the core MVP workflow:
+- **Transcription**: Integrated Groq/Whisper API for fast, accurate speech-to-text.
+- **Backtrack Playback**: Added "J" key / "Backtrack" button in Review Deck to replay the previous hotzone instantly.
+- **Smart Hotzones (Basic)**:
+  - **Idempotency**: Prevents re-transcribing already processed segments.
+  - **Review Deck**: Interactive cards with playback controls and context scrolling.
+
+## [0.2.0] - 2026-03-01
+### Added
+- **Hotzone Data Model**: Defined schema for `Hotzone` and `TranscriptSegment`.
+- **Supabase Integration**: Connected `hotzones` table for persistence.
 
 ### Added
 - **PWA Support**: Added `vite-plugin-pwa` configuration, `manifest.json`, and service worker strategy for offline capability and "Add to Home Screen" functionality.
