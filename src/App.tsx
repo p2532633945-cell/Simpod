@@ -126,18 +126,26 @@ function App() {
       const transcriptToUse = audioFile ? [] : MOCK_TRANSCRIPT; 
       
       // Note: We pass 'audioSrc' as the 4th argument now to support remote slicing.
+      // We also pass existing 'hotzones' to filter out already processed anchors.
       const generated = await processAnchorsToHotzones(
         anchors, 
         transcriptToUse, 
         audioFile, 
         audioSrc,
-        currentTranscript
+        currentTranscript,
+        hotzones // Existing hotzones
       );
+      
+      if (generated.length === 0) {
+        console.log("No new hotzones generated.");
+        return;
+      }
       
       // Save generated hotzones to Supabase
       await Promise.all(generated.map(hz => saveHotzone(hz)));
       
-      setHotzones(generated);
+      // Append new hotzones to existing ones (avoid duplicates by ID if needed, but generated should be new)
+      setHotzones([...hotzones, ...generated]);
       console.log("Generated and saved Hotzones:", generated);
     } catch (error) {
       console.error("Error saving generated hotzones:", error);
@@ -151,6 +159,11 @@ function App() {
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handlePlayHotzone = (time: number) => {
+    seek(time);
+    setIsPlaying(true);
   };
 
   // --- Render Views ---
@@ -303,6 +316,7 @@ function App() {
           hotzones={hotzones} 
           transcript={MOCK_TRANSCRIPT} 
           onClose={() => setIsReviewOpen(false)} 
+          onPlayHotzone={handlePlayHotzone}
         />
       )}
     </div>

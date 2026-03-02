@@ -60,11 +60,32 @@ export const processAnchorsToHotzones = async (
   transcript: TranscriptSegment[],
   audioFile?: File, // Optional: Real audio file for processing
   audioUrl?: string, // Optional: Remote URL
-  transcriptInfo?: { url: string; type: string } // Optional: Official transcript
+  transcriptInfo?: { url: string; type: string }, // Optional: Official transcript
+  existingHotzones: Hotzone[] = [] // Optional: Existing hotzones to avoid reprocessing
 ): Promise<Hotzone[]> => {
   
+  // 0. Filter out anchors that are already covered by existing finalized hotzones
+  // Buffer: 2s (If anchor is within 2s of existing hotzone, consider it covered)
+  const BUFFER = 2;
+  const newAnchors = anchors.filter(anchor => {
+    // Check if anchor falls within any existing hotzone (expanded by buffer)
+    const covered = existingHotzones.some(hz => 
+      anchor.timestamp >= hz.start_time - BUFFER && 
+      anchor.timestamp <= hz.end_time + BUFFER
+    );
+    if (covered) {
+        console.log(`[Skipping] Anchor at ${anchor.timestamp.toFixed(2)}s covered by existing hotzone.`);
+    }
+    return !covered;
+  });
+
+  if (newAnchors.length === 0) {
+      console.log("No new anchors to process.");
+      return [];
+  }
+
   // 1. Generate Mechanical Hotzones first
-  let hotzones = anchors.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
+  let hotzones = newAnchors.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
 
   // 2. Sort by start time
   hotzones.sort((a, b) => a.start_time - b.start_time);
