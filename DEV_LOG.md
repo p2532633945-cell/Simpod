@@ -11,6 +11,13 @@ Focused on fixing critical deployment issues and implementing remote audio trans
 - **Data Structure**: Separated `hotzones` (private) from `transcripts` (public/shared) in Supabase.
 - **Groq Integration**: Connected Whisper API for word-level transcription.
 
+### 🚀 v0.2.3 - Smart Incremental Generation (In Progress)
+- **Goal**: Support extending existing hotzones instead of skipping them when a new anchor is added near the boundary.
+- **Features**:
+  - **Smart Extension**: Detects if an anchor falls near the end of an existing zone and extends it.
+  - **Diff Transcription**: Only transcribes the newly added duration (the "diff") to save costs and time.
+  - **Official Transcript Support**: (Planned) Prioritize `<podcast:transcript>` from RSS.
+
 ### � Pending Verification (Deployed)
 - **Remote Audio Slicing (CORS Proxy)**: 
   - Implemented `corsproxy.io` to bypass Mixed Content (HTTPS -> HTTP) and CORS restrictions.

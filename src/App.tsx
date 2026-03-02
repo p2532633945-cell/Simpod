@@ -142,12 +142,21 @@ function App() {
         return;
       }
       
-      // Save generated hotzones to Supabase
+      // Save generated hotzones to Supabase (updated or new)
       await Promise.all(generated.map(hz => saveHotzone(hz)));
       
-      // Append new hotzones to existing ones (avoid duplicates by ID if needed, but generated should be new)
-      setHotzones([...hotzones, ...generated]);
-      console.log("Generated and saved Hotzones:", generated);
+      // Merge generated (updates + new) into existing state
+      // If a generated hotzone ID exists in state, replace it; otherwise add it.
+      const updatedState = hotzones.map(hz => {
+          const update = generated.find(g => g.id === hz.id);
+          return update || hz;
+      });
+      
+      // Find completely new hotzones
+      const newZones = generated.filter(g => !hotzones.find(h => h.id === g.id));
+      
+      setHotzones([...updatedState, ...newZones]);
+      console.log("Generated hotzones processed. Updated:", generated.filter(g => hotzones.find(h => h.id === g.id)).length, "New:", newZones.length);
     } catch (error) {
       console.error("Error saving generated hotzones:", error);
       alert("Failed to generate hotzones. Check console for details.");

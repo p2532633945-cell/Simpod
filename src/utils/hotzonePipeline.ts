@@ -64,90 +64,185 @@ export const processAnchorsToHotzones = async (
 ): Promise<Hotzone[]> => {
   
   // 0. Filter out anchors that are already covered by existing finalized hotzones
-  // Buffer: 2s (If anchor is within 2s of existing hotzone, consider it covered)
+  // AND Detect Extensions
   const BUFFER = 2;
-  const newAnchors = anchors.filter(anchor => {
-    // Check if anchor falls within any existing hotzone (expanded by buffer)
-    const covered = existingHotzones.some(hz => 
-      anchor.timestamp >= hz.start_time - BUFFER && 
-      anchor.timestamp <= hz.end_time + BUFFER
-    );
-    if (covered) {
-        console.log(`[Skipping] Anchor at ${anchor.timestamp.toFixed(2)}s covered by existing hotzone.`);
-    }
-    return !covered;
-  });
+  const newHotzonesToCreate: Anchor[] = [];
+  const hotzonesToUpdate = new Map<string, { hz: Hotzone, extendRight: number, extendLeft: number }>();
 
-  if (newAnchors.length === 0) {
-      console.log("No new anchors to process.");
+  // Deep clone existing hotzones so we don't mutate state directly (though Map values are refs)
+  // We will work with a copy for calculations
+  const workingHotzones = existingHotzones.map(h => ({ ...h }));
+
+  for (const anchor of anchors) {
+      // 1. Find nearby existing zone
+      // Relaxed buffer for "nearby" detection (e.g. 5s) to allow extension
+      const EXTENSION_BUFFER = 5; 
+      
+      const nearbyZoneIndex = workingHotzones.findIndex(hz => 
+          anchor.timestamp >= hz.start_time - EXTENSION_BUFFER && 
+          anchor.timestamp <= hz.end_time + EXTENSION_BUFFER
+      );
+
+      if (nearbyZoneIndex !== -1) {
+          const nearbyZone = workingHotzones[nearbyZoneIndex];
+          
+          // Calculate theoretical target zone for this anchor
+          const REACTION_OFFSET = 2;
+          const center = Math.max(0, anchor.timestamp - REACTION_OFFSET);
+          const targetStart = Math.max(0, center - 10);
+          const targetEnd = center + 10;
+
+          // Check coverage
+          if (targetStart >= nearbyZone.start_time - BUFFER && targetEnd <= nearbyZone.end_time + BUFFER) {
+              console.log(`[Skipping] Anchor at ${anchor.timestamp.toFixed(2)}s covered by existing hotzone ${nearbyZone.id}.`);
+              continue;
+          }
+
+          // Not fully covered -> Calculate Extension
+          let extendLeft = 0;
+          let extendRight = 0;
+
+          if (targetStart < nearbyZone.start_time) {
+              extendLeft = nearbyZone.start_time - targetStart;
+              // Limit left extension to reasonable amount (e.g. don't extend 10 mins back)
+              // For mechanical anchors, it's usually small.
+          }
+          
+          if (targetEnd > nearbyZone.end_time) {
+              extendRight = targetEnd - nearbyZone.end_time;
+          }
+
+          if (extendLeft > 0 || extendRight > 0) {
+              console.log(`[Extending] Zone ${nearbyZone.id} by Left:${extendLeft.toFixed(2)}s, Right:${extendRight.toFixed(2)}s`);
+              
+              // Update the working copy immediately so subsequent anchors in this batch see the extended zone
+              nearbyZone.start_time = Math.min(nearbyZone.start_time, targetStart);
+              nearbyZone.end_time = Math.max(nearbyZone.end_time, targetEnd);
+              
+              // Register for processing
+              const existingEntry = hotzonesToUpdate.get(nearbyZone.id);
+              if (existingEntry) {
+                  // Aggregate extensions
+                  hotzonesToUpdate.set(nearbyZone.id, {
+                      hz: nearbyZone, // updated ref
+                      extendLeft: Math.max(existingEntry.extendLeft, extendLeft), // This logic is slightly flawed if multiple anchors push boundaries. 
+                      // Better: The workingZone IS the source of truth for final boundaries.
+                      // The 'extend' values are just flags to say "we need to transcribe".
+                      // Actually, we need to know the *ranges* to transcribe (the Diffs).
+                      extendRight: 0 // Placeholder, we'll calc diff later
+                  });
+              } else {
+                  hotzonesToUpdate.set(nearbyZone.id, { hz: nearbyZone, extendLeft, extendRight });
+              }
+          }
+
+      } else {
+          // No nearby zone -> Create New
+          newHotzonesToCreate.push(anchor);
+      }
+  }
+
+  // Helper to slice and transcribe a specific range
+  const processRange = async (start: number, end: number, audioId: string): Promise<{ text: string, words: any[] }> => {
+      if (end <= start) return { text: "", words: [] };
+      
+      console.log(`[ASR] Processing diff range: ${start.toFixed(2)} - ${end.toFixed(2)}`);
+      
+      let audioSlice: Blob;
+      if (audioFile) {
+          audioSlice = await sliceAudio(audioFile, start, end);
+      } else if (audioUrl && typeof audioUrl === 'string' && audioUrl.startsWith('http')) {
+          audioSlice = await sliceRemoteAudio(audioUrl, start, end);
+      } else {
+          // Fallback mock
+          return { text: " [Extended] ", words: [] };
+      }
+
+      // Check cache first? (Maybe later)
+      const result = await transcribeAudio(audioSlice);
+      
+      // Adjust timestamps relative to the global start
+      const adjustedWords = result.words?.map(w => ({
+          ...w,
+          start: start + w.start,
+          end: start + w.end
+      })) || [];
+
+      return { text: result.text, words: adjustedWords };
+  };
+
+  // 1. Process Updates (Extensions)
+  const updatedResults = await Promise.all(Array.from(hotzonesToUpdate.values()).map(async ({ hz }) => {
+      // Re-calculate diffs based on the FINAL state of 'hz' (working copy) vs 'original'
+      const original = existingHotzones.find(h => h.id === hz.id);
+      if (!original) return hz; // Should not happen
+
+      let newText = original.transcript_snippet;
+      let newWords = original.metadata.transcript_words || [];
+
+      // Diff Left
+      if (hz.start_time < original.start_time) {
+          const { text, words } = await processRange(hz.start_time, original.start_time, hz.audio_id);
+          newText = text + " " + newText;
+          newWords = [...words, ...newWords];
+      }
+
+      // Diff Right
+      if (hz.end_time > original.end_time) {
+           const { text, words } = await processRange(original.end_time, hz.end_time, hz.audio_id);
+           newText = newText + " " + text;
+           newWords = [...newWords, ...words];
+      }
+
+      return {
+          ...hz,
+          transcript_snippet: newText,
+          metadata: {
+              ...hz.metadata,
+              transcript_words: newWords,
+              user_adjustment_history: [
+                  ...(hz.metadata.user_adjustment_history || []),
+                  { action: 'expand', timestamp: new Date().toISOString() }
+              ]
+          }
+      } as Hotzone;
+  }));
+
+
+  if (newHotzonesToCreate.length === 0 && updatedResults.length === 0) {
+      console.log("No new anchors or extensions to process.");
       return [];
   }
 
-  // 1. Generate Mechanical Hotzones first
-  const hotzones = newAnchors.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
+  // 2. Generate New Mechanical Hotzones
+  const hotzones = newHotzonesToCreate.map((anchor) => generateHotzoneFromAnchor(anchor, transcript));
 
-  // 2. Sort by start time
+  // 3. Sort by start time
   hotzones.sort((a, b) => a.start_time - b.start_time);
 
-  // 3. Merge overlapping hotzones
-  const mergedHotzones: Hotzone[] = [];
-  if (hotzones.length === 0) return [];
-
-  let current = hotzones[0];
-
-  for (let i = 1; i < hotzones.length; i++) {
-    const next = hotzones[i];
-    
-    // Check overlap (or very close, e.g. < 2s gap)
-    if (next.start_time <= current.end_time + 2) {
-      // Merge
-      current.end_time = Math.max(current.end_time, next.end_time);
-      
-      // Merge metadata
-      if (!current.metadata.user_adjustment_history) current.metadata.user_adjustment_history = [];
-      current.metadata.user_adjustment_history.push({
-        action: 'merge',
-        timestamp: new Date().toISOString(),
-      });
-    } else {
-      mergedHotzones.push(current);
-      current = next;
-    }
+  // 4. Merge overlapping NEW hotzones (Current Logic)
+  // ... (Keep existing merge logic for new zones)
+  const mergedNewHotzones: Hotzone[] = [];
+  if (hotzones.length > 0) {
+      let current = hotzones[0];
+      for (let i = 1; i < hotzones.length; i++) {
+        const next = hotzones[i];
+        if (next.start_time <= current.end_time + 2) {
+          current.end_time = Math.max(current.end_time, next.end_time);
+        } else {
+          mergedNewHotzones.push(current);
+          current = next;
+        }
+      }
+      mergedNewHotzones.push(current);
   }
-  mergedHotzones.push(current);
 
-  // 4. Process hotzones (transcribe if audio file exists, or use transcript fallback)
-  console.log(`Starting batch transcription for ${mergedHotzones.length} hotzones...`);
-  if (transcriptInfo) {
-      console.log(`[Transcript] Official transcript detected at: ${transcriptInfo.url} (${transcriptInfo.type})`);
-      // Future TODO: Implement fetching and parsing of official transcript here to skip Groq.
-      // For now, we still fall back to Groq/Slicing but log the opportunity.
-  }
+  // 5. Process NEW hotzones
+  console.log(`Starting batch transcription for ${mergedNewHotzones.length} NEW hotzones...`);
   
-  const processedHotzones = await Promise.all(mergedHotzones.map(async (hz) => {
-    // Determine source: Local File or Remote URL?
-    // We need to pass the audio URL down here if audioFile is missing.
-    // However, the current signature is (..., audioFile?: File).
-    // We should probably rely on `useAudioStore` or pass the URL.
-    // BUT, `processAnchorsToHotzones` is a standalone utility.
-    // 
-    // HACK: For MVP, we can fetch the URL from the store directly if audioFile is missing.
-    // This couples the utility to the store, but it solves the prop drilling issue instantly.
-    // A cleaner way is to add `audioUrl` as a parameter.
-    
-    // Let's assume we update the signature in a moment. For now, let's use a workaround or update the caller.
-    // Actually, let's update the signature of this function to accept `audioUrl`.
-    
-    // Wait, I can't easily change the signature without changing the caller in App.tsx.
-    // Let's check App.tsx first.
-    
-    // Let's import the store to get the current URL.
-    // Note: We need to access the App-level state, but 'audioSrc' is currently in App.tsx state, NOT in Zustand.
-    // This is the bug. The build failed because 'audioSrc' is not in AudioState.
-    // 
-    // Fix: We updated the signature to accept 'audioUrl'.
-    // We will use that instead of the store hack.
-    
+  const processedNewHotzones = await Promise.all(mergedNewHotzones.map(async (hz) => {
+    // ... (Keep existing transcription logic for new zones)
+    // Reuse the exact same logic block as before
     try {
       let audioSlice: Blob;
       
@@ -157,65 +252,37 @@ export const processAnchorsToHotzones = async (
           console.log(`[Hotzone] Slicing remote audio: ${audioUrl}`);
           audioSlice = await sliceRemoteAudio(audioUrl, hz.start_time, hz.end_time);
       } else {
-          // Fallback: try to find match in mock transcript or just keep as placeholder
           const match = transcript.find(t => t.start_time <= hz.start_time && t.end_time >= hz.end_time);
-          if (match) {
-               return { ...hz, transcript_snippet: match.text };
-          }
+          if (match) return { ...hz, transcript_snippet: match.text };
           return { ...hz, transcript_snippet: "[Audio source missing for transcription]" };
       }
       
       let text = hz.transcript_snippet;
       let words: Array<{ word: string; start: number; end: number }> | undefined = undefined;
       
-      // Check if metadata already has text (e.g. re-run)
       if (!text || text === "Processing...") {
-        
-        // 1. Try to find existing transcript in Shared DB (Reuse Logic)
         const existing = await findExistingTranscript(hz.audio_id, hz.start_time, hz.end_time);
-        
         if (existing) {
             console.log(`[Reuse] Found shared transcript for Hotzone ${hz.id}`);
             text = existing.text;
             words = existing.words;
         } else {
-            // 2. If not found, call Groq API
             console.log(`[API] Transcribing Hotzone ${hz.id}...`);
             const result = await transcribeAudio(audioSlice);
             text = result.text;
             words = result.words;
-            
-            console.log(`[API] Transcription complete for ${hz.id}`);
-            
-            // 3. Save to Shared DB for future reuse
-            // Note: We save the raw result for the *original* slice (hz.start_time, hz.end_time)
-            // BEFORE magnet adjustment, so next time we find it by the same coordinates.
             await saveTranscript(hz.audio_id, hz.start_time, hz.end_time, text, words);
         }
 
-        // --- Layer 2: Magnet Logic (Snap to Sentence Boundaries) ---
-        // If we have word timestamps, we can refine the start/end times.
         if (words && words.length > 0) {
-            // Find the first and last word
             const firstWord = words[0];
             const lastWord = words[words.length - 1];
-            
-            // Adjust Hotzone boundaries relative to the SLICE
-            // Note: Groq returns timestamps relative to the start of the SLICE (0s), not the original file.
-            // So we need to add hz.start_time to map back to global time.
-            
-            // Heuristic:
-            // 1. If the first word starts > 0.5s, it means silence at start -> Trim it.
-            // 2. If the text seems cut off (no punctuation at end), maybe we should expand? 
-            //    (Expanding requires re-slicing which is complex. For now, let's just trim/snap inwards)
-            
             const relativeStart = firstWord.start;
             const relativeEnd = lastWord.end;
-            
             const newStartTime = hz.start_time + relativeStart;
             const newEndTime = hz.start_time + relativeEnd;
             
-            console.log(`[Magnet] Refined ${hz.id}: ${hz.start_time.toFixed(2)}->${newStartTime.toFixed(2)} | ${hz.end_time.toFixed(2)}->${newEndTime.toFixed(2)}`);
+            console.log(`[Magnet] Refined ${hz.id}: ${hz.start_time.toFixed(2)}->${newStartTime.toFixed(2)}`);
             
             return { 
                 ...hz, 
@@ -226,7 +293,7 @@ export const processAnchorsToHotzones = async (
                     ...hz.metadata,
                     transcript_words: words.map(w => ({
                         ...w,
-                        start: hz.start_time + w.start, // Map to global time
+                        start: hz.start_time + w.start,
                         end: hz.start_time + w.end
                     }))
                 }
@@ -240,5 +307,6 @@ export const processAnchorsToHotzones = async (
     }
   }));
 
-  return processedHotzones;
+  // Combine Updated and New
+  return [...updatedResults, ...processedNewHotzones];
 };
