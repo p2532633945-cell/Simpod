@@ -19,71 +19,108 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).send('Missing url parameter');
     }
 
-    try {
-        const targetUrl = new URL(url);
-        const client = targetUrl.protocol === 'https:' ? https : http;
-        const range = req.headers.range;
-
-        const options: https.RequestOptions = {
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Simpod-Audio-Proxy/1.0',
-            }
-        };
-
-        if (range) {
-            options.headers!['Range'] = range;
+    // Helper to follow redirects manually (since https.request doesn't follow redirects by default)
+    const fetchWithRedirects = (targetUrlStr: string, options: https.RequestOptions, redirectCount = 0): void => {
+        if (redirectCount > 5) {
+            if (!res.headersSent) res.status(502).send('Too many redirects');
+            return;
         }
 
-        const proxyReq = client.request(targetUrl, options, (proxyRes) => {
-            // Forward status code
-            res.status(proxyRes.statusCode || 200);
+        try {
+            const targetUrl = new URL(targetUrlStr);
+            const client = targetUrl.protocol === 'https:' ? https : http;
             
-            // Forward critical headers for audio streaming
-            const forwardHeaders = [
-                'content-type',
-                'content-length',
-                'content-range',
-                'accept-ranges',
-                'content-encoding',
-                'content-disposition',
-                'cache-control',
-                'last-modified',
-                'etag'
-            ];
+            const reqOptions: https.RequestOptions = {
+                ...options,
+                method: 'GET',
+                hostname: targetUrl.hostname,
+                port: targetUrl.port,
+                path: targetUrl.pathname + targetUrl.search,
+                headers: {
+                    ...options.headers,
+                    'Host': targetUrl.hostname // Update Host header for redirects
+                }
+            };
 
-            forwardHeaders.forEach(key => {
-                const val = proxyRes.headers[key];
-                if (val) {
-                    res.setHeader(key, val);
+            const proxyReq = client.request(reqOptions, (proxyRes) => {
+                // Handle Redirects (301, 302, 303, 307, 308)
+                if (proxyRes.statusCode && [301, 302, 303, 307, 308].includes(proxyRes.statusCode)) {
+                    const location = proxyRes.headers['location'];
+                    if (location) {
+                        // Resolve relative URLs
+                        const nextUrl = new URL(location, targetUrlStr).toString();
+                        console.log(`[Proxy] Following redirect (${proxyRes.statusCode}) to: ${nextUrl}`);
+                        
+                        // Clean up current response and retry
+                        proxyRes.resume(); 
+                        fetchWithRedirects(nextUrl, options, redirectCount + 1);
+                        return;
+                    }
+                }
+
+                // Forward status code
+                res.status(proxyRes.statusCode || 200);
+                
+                // Forward critical headers for audio streaming
+                const forwardHeaders = [
+                    'content-type',
+                    'content-length',
+                    'content-range',
+                    'accept-ranges',
+                    'content-encoding',
+                    'content-disposition',
+                    'cache-control',
+                    'last-modified',
+                    'etag'
+                ];
+
+                forwardHeaders.forEach(key => {
+                    const val = proxyRes.headers[key];
+                    if (val) {
+                        res.setHeader(key, val);
+                    }
+                });
+
+                // Pipe the data directly to the response
+                proxyRes.pipe(res);
+
+                proxyRes.on('error', (err) => {
+                    console.error('Proxy Response Error:', err);
+                    res.end();
+                });
+            });
+
+            proxyReq.on('error', (e) => {
+                console.error('Proxy Request Error:', e);
+                if (!res.headersSent) {
+                    res.status(500).send(`Proxy Error: ${e.message}`);
                 }
             });
 
-            // Pipe the data directly to the response
-            proxyRes.pipe(res);
-
-            proxyRes.on('error', (err) => {
-                console.error('Proxy Response Error:', err);
-                res.end();
+            // Set a timeout
+            proxyReq.setTimeout(15000, () => {
+                proxyReq.destroy();
             });
-        });
 
-        proxyReq.on('error', (e) => {
-            console.error('Proxy Request Error:', e);
-            if (!res.headersSent) {
-                res.status(500).send(`Proxy Error: ${e.message}`);
-            }
-        });
+            proxyReq.end();
 
-        // Set a timeout to prevent hanging connections (Vercel has its own limits, but good practice)
-        proxyReq.setTimeout(10000, () => {
-            proxyReq.destroy();
-        });
+        } catch (error: any) {
+             console.error('Proxy URL Error:', error);
+             if (!res.headersSent) res.status(500).send(`Server Error: ${error.message}`);
+        }
+    };
 
-        proxyReq.end();
-
-    } catch (error: any) {
-        console.error('Proxy Setup Error:', error);
-        res.status(500).send(`Server Error: ${error.message}`);
+    // Initial Request Options
+    const initialOptions: https.RequestOptions = {
+        headers: {
+            'User-Agent': 'Simpod-Audio-Proxy/1.0',
+        }
+    };
+    
+    if (req.headers.range) {
+        initialOptions.headers!['Range'] = req.headers.range;
     }
+
+    // Start the request chain
+    fetchWithRedirects(url, initialOptions);
 }
