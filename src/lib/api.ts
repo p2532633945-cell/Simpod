@@ -2,9 +2,27 @@ import { supabase } from './supabase';
 import { Hotzone, Anchor } from '../types';
 
 export const saveHotzone = async (hotzone: Hotzone) => {
+  // Database Schema Compatibility Fix:
+  // The 'hotzones' table in Supabase likely does not have a 'transcript_words' column.
+  // We must move 'transcript_words' from the top-level object into the 'metadata' JSONB column
+  // before sending it to the database.
+  
+  // Create a copy to avoid mutating the original object used in the UI
+  const payload = { ...hotzone };
+  
+  // If transcript_words exists at top level, move it to metadata
+  if (payload.transcript_words) {
+      payload.metadata = {
+          ...payload.metadata,
+          transcript_words: payload.transcript_words
+      };
+      // Remove the top-level property so Supabase doesn't complain about missing column
+      delete (payload as any).transcript_words;
+  }
+
   const { data, error } = await supabase
     .from('hotzones')
-    .insert(hotzone)
+    .insert(payload)
     .select()
     .single();
 
@@ -40,7 +58,17 @@ export const fetchHotzones = async (audioId: string) => {
     console.error('Error fetching hotzones:', error);
     throw error;
   }
-  return data as Hotzone[];
+  
+  // Transform back for UI: pull transcript_words from metadata to top-level
+  return (data as any[]).map(hz => {
+      if (hz.metadata && hz.metadata.transcript_words) {
+          return {
+              ...hz,
+              transcript_words: hz.metadata.transcript_words
+          };
+      }
+      return hz;
+  }) as Hotzone[];
 };
 
 export const findExistingTranscript = async (audioId: string, startTime: number, endTime: number) => {
