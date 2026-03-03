@@ -22,7 +22,7 @@ export const saveHotzone = async (hotzone: Hotzone) => {
 
   const { data, error } = await supabase
     .from('hotzones')
-    .insert(payload)
+    .upsert(payload, { onConflict: 'id' })
     .select()
     .single();
 
@@ -113,13 +113,13 @@ export const saveTranscript = async (
 ) => {
     const { data, error } = await supabase
       .from('transcripts')
-      .insert({
+      .upsert({
           audio_id: audioId,
           start_time: startTime,
           end_time: endTime,
           text,
           words
-      })
+      }, { onConflict: 'audio_id,start_time,end_time' }) // Assuming a composite unique key exists
       .select()
       .single();
       

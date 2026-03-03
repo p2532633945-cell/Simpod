@@ -33,17 +33,25 @@ export const sliceRemoteAudio = async (url: string, startTime: number, endTime: 
             }
         });
 
-        if (!response.ok) {
+        console.log(`[RemoteSlice] Response status: ${response.status}`);
+        if (response.status === 206) {
+             const contentRange = response.headers.get('Content-Range');
+             console.log(`[RemoteSlice] Partial Content received. Range: ${contentRange}`);
+        } else if (response.status === 200) {
+             console.warn(`[RemoteSlice] Server returned 200 OK (Full File). Downloading potentially large file...`);
+        } else {
              throw new Error(`Proxy Fetch failed: ${response.status} ${response.statusText}`);
         }
 
         const arrayBuffer = await response.arrayBuffer();
+        console.log(`[RemoteSlice] Downloaded ${arrayBuffer.byteLength} bytes.`);
         
         // 3. Decode the partial file (Header is present since we started at 0)
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
         // Decode might fail if the file is truncated mid-frame, but usually browsers handle it.
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        console.log(`[RemoteSlice] Decoded audio duration: ${audioBuffer.duration.toFixed(2)}s`);
         
         // 4. Slice to the exact requested time
         return sliceAudioBuffer(audioBuffer, startTime, endTime, audioContext);
