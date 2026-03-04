@@ -100,21 +100,38 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-4">
+        {/* Product Icon */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
+          className="mb-2"
+        >
+          <img
+            src="/images/simpod-icon.png"
+            alt="Simpod app icon"
+            className="w-20 h-20 md:w-24 md:h-24 rounded-2xl"
+            style={{
+              boxShadow: '0 0 40px rgba(120, 100, 255, 0.15)',
+            }}
+          />
+        </motion.div>
+
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
           className="px-4 py-1.5 rounded-full border border-[rgba(0,207,253,0.2)] bg-[rgba(0,207,253,0.05)] text-[#00cffd] text-xs font-medium tracking-widest uppercase"
         >
-          AI-Powered Podcast Player
+          AI-Powered Podcast Player for Language Learners
         </motion.div>
 
         {/* Headline */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.15 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
           className="text-5xl md:text-7xl font-bold tracking-tight text-center text-white"
           style={{ textWrap: 'balance' }}
         >
@@ -125,10 +142,10 @@ export function HeroSection() {
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
+          transition={{ duration: 0.8, delay: 0.35 }}
           className="text-lg md:text-xl text-[#8a8f98] max-w-xl text-center leading-relaxed"
         >
-          One-tap marking. AI-powered hotzones. Never lose an insight again.
+          {'One-tap marking for the 20% you don\'t understand. Keep listening, keep flowing.'}
         </motion.p>
 
         {/* MARK Button */}
@@ -189,7 +206,7 @@ export function HeroSection() {
               transition={{ duration: 0.4 }}
               className="text-sm text-[#00cffd] tracking-wide"
             >
-              Anchor dropped. Insight captured.
+              Marked. Keep listening -- we got it.
             </motion.div>
           )}
         </AnimatePresence>

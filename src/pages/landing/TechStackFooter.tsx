@@ -99,11 +99,16 @@ export function TechStackFooter() {
           />
 
           <div className="flex flex-col items-center gap-4">
+            <img
+              src="/images/simpod-icon.png"
+              alt="Simpod"
+              className="w-12 h-12 rounded-xl"
+            />
             <div className="text-2xl font-bold tracking-tighter text-white">
               Simpod
             </div>
-            <p className="text-xs text-[#555] max-w-sm leading-relaxed">
-              Protect your flow. Capture every insight. An AI-powered podcast player for the way you actually learn.
+            <p className="text-xs text-[#555] max-w-sm leading-relaxed text-center">
+              Protect your flow. An AI-powered podcast player built for language learners who want to enjoy extensive listening without being interrupted by the 20% they don't understand.
             </p>
             <div className="flex items-center gap-6 mt-4">
               <a

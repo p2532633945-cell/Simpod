@@ -1,6 +1,7 @@
 import { HeroSection } from './HeroSection';
 import { InteractionDemo } from './InteractionDemo';
 import { HotzoneVisualization } from './HotzoneVisualization';
+import { FutureVision } from './FutureVision';
 import { PhilosophyCards } from './PhilosophyCards';
 import { TechStackFooter } from './TechStackFooter';
 
@@ -25,6 +26,11 @@ export function LandingPage() {
       <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />
 
       <HotzoneVisualization />
+
+      {/* Divider */}
+      <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />
+
+      <FutureVision />
 
       {/* Divider */}
       <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />

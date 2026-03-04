@@ -3,40 +3,50 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface Hotzone {
   id: string;
-  start: number; // percentage 0-100
-  width: number; // percentage
-  label: string;
-  text: string;
+  start: number;
+  width: number;
+  labelEn: string;
+  labelZh: string;
+  textEn: string;
+  textZh: string;
 }
 
 const HOTZONES: Hotzone[] = [
   {
     id: 'hz1',
-    start: 8,
-    width: 6,
-    label: 'Key Insight',
-    text: '"The 80/20 rule doesn\'t just apply to business. In any podcast, 80% is context-setting. The remaining 20% is pure gold."',
+    start: 12,
+    width: 5,
+    labelEn: 'Unfamiliar Word',
+    labelZh: '生词',
+    textEn: '"...the fiscal implications of quantitative easing are often understated..."',
+    textZh: '"...量化宽松的财政影响往往被低估..."',
   },
   {
     id: 'hz2',
-    start: 32,
-    width: 8,
-    label: 'Core Argument',
-    text: '"What separates great learners from average ones is their ability to recognize signal from noise in real-time."',
+    start: 35,
+    width: 6,
+    labelEn: 'Complex Phrase',
+    labelZh: '复杂短语',
+    textEn: '"...what we call the paradox of thrift essentially means that individual saving can lead to collective decline..."',
+    textZh: '"...我们所说的节俭悖论本质上意味着个人储蓄可能导致集体衰退..."',
   },
   {
     id: 'hz3',
-    start: 55,
+    start: 58,
     width: 5,
-    label: 'Actionable Tip',
-    text: '"Start by marking blindly. Don\'t overthink it. Your intuition for what matters is better than you think."',
+    labelEn: 'Fast Speech',
+    labelZh: '语速过快',
+    textEn: '"...disproportionately-allocated-capital-expenditure across emerging-market-sovereign-debt instruments..."',
+    textZh: '"...在新兴市场主权债务工具中不成比例地分配的资本支出..."',
   },
   {
     id: 'hz4',
-    start: 76,
-    width: 7,
-    label: 'Conclusion',
-    text: '"The future of learning isn\'t about consuming more. It\'s about capturing better."',
+    start: 79,
+    width: 6,
+    labelEn: 'Idiom / Slang',
+    labelZh: '习语 / 俚语',
+    textEn: '"...so basically they\'re kicking the can down the road, which is par for the course in Washington..."',
+    textZh: '"...所以基本上他们是在拖延问题，这在华盛顿已经是家常便饭了..."',
   },
 ];
 
@@ -54,11 +64,19 @@ export function HotzoneVisualization() {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-4">
-            The 80/20 of Every Podcast
+          <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-3">
+            {'80% '}
+            <span className="text-[#8a8f98]">{'/ '}</span>
+            {'20%'}
           </h2>
-          <p className="text-[#8a8f98] text-lg max-w-lg mx-auto leading-relaxed">
-            Most of a podcast is context. Simpod finds the moments that matter. Click the glowing zones.
+          <p className="text-[#8a8f98] text-lg max-w-2xl mx-auto leading-relaxed">
+            {'80% '}of a podcast you already understand.
+            {' Simpod '}helps you capture the other
+            {' 20% '}that trips you up -- without breaking your flow.
+          </p>
+          <p className="text-[#555] text-sm mt-3 max-w-xl mx-auto leading-relaxed">
+            {'80% '}的播客内容你已经能听懂。
+            Simpod 帮你捕捉剩下{'那 20% '}让你卡壳的部分 -- 而不打断你的心流。
           </p>
         </motion.div>
 
@@ -78,7 +96,7 @@ export function HotzoneVisualization() {
               border: '1px solid rgba(255,255,255,0.05)',
             }}
           >
-            {/* Gray waveform bars background */}
+            {/* Gray waveform bars background - the 80% you understand */}
             <div className="absolute inset-0 flex items-center gap-[1px] px-2">
               {Array.from({ length: 120 }).map((_, i) => {
                 const h = 20 + Math.abs(Math.sin(i * 0.4) * Math.cos(i * 0.15)) * 70;
@@ -95,7 +113,7 @@ export function HotzoneVisualization() {
               })}
             </div>
 
-            {/* Hotzone overlays */}
+            {/* Hotzone overlays - the 20% you don't understand */}
             {HOTZONES.map((zone) => (
               <motion.button
                 key={zone.id}
@@ -143,9 +161,9 @@ export function HotzoneVisualization() {
                 </div>
 
                 {/* Top label on hover */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  <span className="text-[10px] text-[#00cffd] font-medium tracking-wider uppercase bg-[rgba(0,207,253,0.1)] px-2 py-0.5 rounded-full">
-                    {zone.label}
+                <div className="absolute -top-9 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap flex flex-col items-center">
+                  <span className="text-[10px] text-[#00cffd] font-medium tracking-wider bg-[rgba(0,207,253,0.1)] px-2 py-0.5 rounded-full">
+                    {zone.labelZh}
                   </span>
                 </div>
               </motion.button>
@@ -155,14 +173,14 @@ export function HotzoneVisualization() {
           {/* Percentage indicator */}
           <div className="flex justify-between mt-4 px-2">
             <span className="text-xs text-[#555]">0:00</span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-[rgba(255,255,255,0.06)]" />
-                <span className="text-xs text-[#555]">Context (80%)</span>
+                <span className="text-xs text-[#555]">{'Understood (80%)'}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-[#00cffd] opacity-50" />
-                <span className="text-xs text-[#555]">Hotzones (20%)</span>
+                <span className="text-xs text-[#555]">{'Marked Points (20%)'}</span>
               </div>
             </div>
             <span className="text-xs text-[#555]">45:00</span>
@@ -188,11 +206,17 @@ export function HotzoneVisualization() {
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#00cffd]" />
                     <span className="text-xs text-[#00cffd] font-medium tracking-wider uppercase">
-                      {HOTZONES.find(z => z.id === activeZone)?.label}
+                      {HOTZONES.find(z => z.id === activeZone)?.labelEn}
+                    </span>
+                    <span className="text-xs text-[#00cffd] opacity-60">
+                      {HOTZONES.find(z => z.id === activeZone)?.labelZh}
                     </span>
                   </div>
-                  <p className="text-white/80 text-sm md:text-base leading-relaxed italic">
-                    {HOTZONES.find(z => z.id === activeZone)?.text}
+                  <p className="text-white/80 text-sm md:text-base leading-relaxed italic mb-2">
+                    {HOTZONES.find(z => z.id === activeZone)?.textEn}
+                  </p>
+                  <p className="text-[#8a8f98] text-xs md:text-sm leading-relaxed">
+                    {HOTZONES.find(z => z.id === activeZone)?.textZh}
                   </p>
                 </div>
               </motion.div>

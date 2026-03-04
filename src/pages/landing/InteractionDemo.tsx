@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 
 const SEGMENTS = [
-  { start: 0, end: 12, text: "So the key insight is that most people approach learning backwards..." },
-  { start: 12, end: 28, text: "...this is the beginning of the insight. When you look at how experts actually learn, they don't start from scratch..." },
-  { start: 28, end: 45, text: "They find the 20% that matters and build outward from there." },
-  { start: 45, end: 60, text: "What makes Simpod different is this concept of blind marking." },
-  { start: 60, end: 78, text: "You hear something important, you hit mark. The AI figures out the perfect sentence boundary." },
-  { start: 78, end: 90, text: "No more rewinding 15 seconds and hoping you catch it." },
+  { start: 0, end: 12, text: "So the fiscal implications of quantitative easing are often understated by mainstream media..." },
+  { start: 12, end: 28, text: "...what we call the paradox of thrift essentially means that individual saving can lead to collective economic decline..." },
+  { start: 28, end: 45, text: "The disproportionately allocated capital expenditure across emerging markets has created new dynamics..." },
+  { start: 45, end: 60, text: "Basically they're kicking the can down the road, which is par for the course in Washington..." },
+  { start: 60, end: 78, text: "The inflationary pressure from supply chain disruptions is something economists call a cost-push spiral..." },
+  { start: 78, end: 90, text: "And that's why central banks are caught between a rock and a hard place right now." },
 ];
 
 const TOTAL_DURATION = 90;
@@ -122,7 +122,7 @@ export function InteractionDemo() {
           Smart Snap-Back
         </h2>
         <p className="text-[#8a8f98] text-lg max-w-lg mx-auto leading-relaxed">
-          Hit MARK anywhere. The playhead snaps to the logical sentence start. Every time.
+          {'Didn\'t catch that? Hit MARK. The playhead snaps to the sentence start -- no manual rewinding, no flow broken.'}
         </p>
       </motion.div>
 
@@ -154,8 +154,8 @@ export function InteractionDemo() {
               <div className="w-6 h-6 rounded-full bg-[#00cffd] opacity-60" />
             </div>
             <div className="min-w-0">
-              <div className="text-white font-semibold text-sm truncate">The Learning Paradox</div>
-              <div className="text-[#8a8f98] text-xs">Simpod Demo  &#183;  Episode 1</div>
+              <div className="text-white font-semibold text-sm truncate">The Economist Podcast</div>
+              <div className="text-[#8a8f98] text-xs">{'Extensive Listening Demo'}</div>
             </div>
           </div>
 
