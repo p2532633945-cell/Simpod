@@ -3,6 +3,8 @@ import { InteractionDemo } from './InteractionDemo';
 import { HotzoneVisualization } from './HotzoneVisualization';
 import { FutureVision } from './FutureVision';
 import { PhilosophyCards } from './PhilosophyCards';
+import { SharingSession } from './SharingSession';
+import { DiaryShowcase } from './DiaryShowcase';
 import { TechStackFooter } from './TechStackFooter';
 
 export function LandingPage() {
@@ -36,6 +38,16 @@ export function LandingPage() {
       <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />
 
       <PhilosophyCards />
+
+      {/* Divider */}
+      <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />
+
+      <SharingSession />
+
+      {/* Divider */}
+      <div className="w-full max-w-xl mx-auto h-px bg-gradient-to-r from-transparent via-[rgba(0,207,253,0.08)] to-transparent" />
+
+      <DiaryShowcase />
 
       <TechStackFooter />
     </div>
