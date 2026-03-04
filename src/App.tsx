@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useAudioStore } from './store/useAudioStore';
 import { SmartCruiseControl } from './components/SmartCruiseControl';
@@ -10,6 +11,7 @@ import { processAnchorsToHotzones } from './utils/hotzonePipeline';
 import { saveHotzone, fetchHotzones } from './lib/api';
 import { TranscriptSegment } from './types';
 import { Play, Pause, Anchor as AnchorIcon, Layers, RotateCcw, Upload, Loader2, Library as LibraryIcon, Headphones } from 'lucide-react';
+import { LandingPage } from './pages/landing/LandingPage';
 
 // Default Mock Data (Fallback)
 const MOCK_AUDIO_SRC = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
@@ -22,7 +24,7 @@ const DEFAULT_AUDIO_ID = 'demo-audio-1';
 
 type ViewState = 'player' | 'library' | 'podcast-detail';
 
-function App() {
+function PlayerApp() {
   const [currentView, setCurrentView] = useState<ViewState>('player');
   const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
   
@@ -330,6 +332,17 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/app" element={<PlayerApp />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
