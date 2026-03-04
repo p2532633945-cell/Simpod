@@ -12,17 +12,19 @@ const SEGMENTS = [
 ];
 
 const TOTAL_DURATION = 90;
+const REWIND_SECONDS = 10;
 
 export function InteractionDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(38);
+  const [currentTime, setCurrentTime] = useState(52);
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcriptText, setTranscriptText] = useState('');
   const [isSnapping, setIsSnapping] = useState(false);
+  const [snapFromProgress, setSnapFromProgress] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  // Waveform bars data
-  const barCount = 48;
+  // Waveform bars data - more bars for richer visualization
+  const barCount = 64;
   const barsRef = useRef<number[]>(
     Array.from({ length: barCount }, () => Math.random() * 0.5 + 0.2)
   );
@@ -68,21 +70,26 @@ export function InteractionDemo() {
     setIsPlaying(false);
     setIsSnapping(true);
 
-    // Find the sentence start for current position
-    const segment = SEGMENTS.findLast(s => s.start <= currentTime);
-    if (!segment) return;
+    // Record where we started for visual trail
+    const startProgress = (currentTime / TOTAL_DURATION) * 100;
+    setSnapFromProgress(startProgress);
 
-    // Animate snap-back
+    // Calculate target: rewind ~10 seconds, then snap to nearest sentence start
+    const rewindTarget = Math.max(0, currentTime - REWIND_SECONDS);
+    // Find the segment that contains or is closest before the rewind target
+    const segment = SEGMENTS.findLast(s => s.start <= rewindTarget) || SEGMENTS[0];
     const targetTime = segment.start;
-    const snapDuration = 600;
+
+    // Animate snap-back over 800ms for dramatic effect
+    const snapDuration = 800;
     const startTime = currentTime;
     const startTimestamp = performance.now();
 
     const snapAnimate = (now: number) => {
       const elapsed = now - startTimestamp;
       const progress = Math.min(elapsed / snapDuration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
+      // Ease out quart for more dramatic deceleration
+      const eased = 1 - Math.pow(1 - progress, 4);
       const newTime = startTime + (targetTime - startTime) * eased;
       setCurrentTime(newTime);
 
@@ -91,9 +98,10 @@ export function InteractionDemo() {
       } else {
         setCurrentTime(targetTime);
         setIsSnapping(false);
+        setSnapFromProgress(null);
         setTranscriptText(segment.text);
         setShowTranscript(true);
-        setTimeout(() => setShowTranscript(false), 4000);
+        setTimeout(() => setShowTranscript(false), 5000);
       }
     };
 
@@ -122,7 +130,7 @@ export function InteractionDemo() {
           Smart Snap-Back
         </h2>
         <p className="text-[#8a8f98] text-lg max-w-lg mx-auto leading-relaxed">
-          {'Didn\'t catch that? Hit MARK. The playhead snaps to the sentence start -- no manual rewinding, no flow broken.'}
+          {"Didn't catch that? Hit MARK. The playhead jumps back ~10s to the sentence start -- no manual rewinding, no flow broken."}
         </p>
       </motion.div>
 
@@ -155,29 +163,71 @@ export function InteractionDemo() {
             </div>
             <div className="min-w-0">
               <div className="text-white font-semibold text-sm truncate">The Economist Podcast</div>
-              <div className="text-[#8a8f98] text-xs">{'Extensive Listening Demo'}</div>
+              <div className="text-[#8a8f98] text-xs">Extensive Listening Demo</div>
             </div>
           </div>
 
           {/* Waveform visualization */}
-          <div className="relative h-20 mb-4 flex items-center gap-[2px] px-1">
+          <div className="relative h-24 mb-4 flex items-center gap-[2px] px-1">
             {barsRef.current.map((h, i) => {
               const barPos = (i / barCount) * 100;
               const isBeforePlayhead = barPos <= progress;
+              // Highlight the snap-back zone during animation
+              const isInSnapZone = isSnapping && snapFromProgress !== null &&
+                barPos >= progress && barPos <= snapFromProgress;
               return (
                 <div
                   key={i}
                   className="flex-1 rounded-full transition-all duration-75"
                   style={{
                     height: `${h * 100}%`,
-                    backgroundColor: isBeforePlayhead
-                      ? isSnapping ? '#00cffd' : 'rgba(0,207,253,0.7)'
-                      : 'rgba(255,255,255,0.08)',
-                    boxShadow: isBeforePlayhead && isSnapping ? '0 0 6px rgba(0,207,253,0.4)' : 'none',
+                    backgroundColor: isInSnapZone
+                      ? 'rgba(0,207,253,0.35)'
+                      : isBeforePlayhead
+                        ? isSnapping ? '#00cffd' : 'rgba(0,207,253,0.7)'
+                        : 'rgba(255,255,255,0.08)',
+                    boxShadow: isInSnapZone
+                      ? '0 0 10px rgba(0,207,253,0.5)'
+                      : isBeforePlayhead && isSnapping ? '0 0 6px rgba(0,207,253,0.4)' : 'none',
+                    transition: isSnapping ? 'background-color 0.05s, box-shadow 0.05s' : 'background-color 0.2s',
                   }}
                 />
               );
             })}
+
+            {/* Ghost playhead showing original position during snap */}
+            <AnimatePresence>
+              {isSnapping && snapFromProgress !== null && (
+                <motion.div
+                  initial={{ opacity: 0.8 }}
+                  animate={{ opacity: 0.2 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute top-0 bottom-0 w-0.5"
+                  style={{
+                    left: `${snapFromProgress}%`,
+                    backgroundColor: '#ff6b6b',
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Rewind trail during snap animation */}
+            <AnimatePresence>
+              {isSnapping && snapFromProgress !== null && (
+                <motion.div
+                  initial={{ opacity: 0.3 }}
+                  animate={{ opacity: [0.3, 0.15, 0.3] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, repeat: Infinity }}
+                  className="absolute top-0 bottom-0 rounded-sm"
+                  style={{
+                    left: `${progress}%`,
+                    width: `${snapFromProgress - progress}%`,
+                    background: 'linear-gradient(90deg, rgba(0,207,253,0.15), rgba(0,207,253,0.05))',
+                  }}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Playhead */}
             <motion.div
@@ -185,11 +235,26 @@ export function InteractionDemo() {
               style={{
                 left: `${progress}%`,
                 backgroundColor: '#00cffd',
-                boxShadow: '0 0 8px rgba(0,207,253,0.6)',
+                boxShadow: isSnapping ? '0 0 16px rgba(0,207,253,0.8)' : '0 0 8px rgba(0,207,253,0.6)',
               }}
-              animate={isSnapping ? { opacity: [1, 0.4, 1] } : {}}
-              transition={{ duration: 0.2, repeat: isSnapping ? 3 : 0 }}
+              animate={isSnapping ? { opacity: [1, 0.3, 1] } : {}}
+              transition={{ duration: 0.15, repeat: isSnapping ? 6 : 0 }}
             />
+
+            {/* Rewind label during snap */}
+            <AnimatePresence>
+              {isSnapping && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute -top-8 text-[10px] font-mono font-bold tracking-wider text-[#00cffd]"
+                  style={{ left: `${Math.max(progress, 2)}%` }}
+                >
+                  {'<< SNAP BACK'}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Time display */}
@@ -261,6 +326,7 @@ export function InteractionDemo() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#00cffd] animate-pulse" />
                   <span className="text-[10px] uppercase tracking-widest text-[#00cffd] font-medium">Transcript</span>
+                  <span className="text-[10px] text-[#00cffd] opacity-50 ml-auto font-mono">{'~10s rewound'}</span>
                 </div>
                 {transcriptText}
               </motion.div>

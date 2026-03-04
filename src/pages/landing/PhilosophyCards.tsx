@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mountain, ArrowUpRight, Sparkles } from 'lucide-react';
+import { Mountain, ArrowUpRight, Route } from 'lucide-react';
 
 interface CardData {
   icon: React.ReactNode;
@@ -12,7 +12,7 @@ interface CardData {
 
 function MountainDiagram() {
   return (
-    <div className="w-full h-36 relative flex items-end justify-center gap-1 px-4">
+    <div className="w-full h-40 relative flex items-end justify-center gap-1 px-4">
       {/* Mountain silhouette using bars */}
       {Array.from({ length: 24 }).map((_, i) => {
         const peak = 12;
@@ -62,71 +62,120 @@ function MountainDiagram() {
   );
 }
 
-function FrontAdvantageDiagram() {
+function PeaksAndValleysDiagram() {
+  // Visualization: horizontal axis = different fields, vertical = development ratio
+  // A few tall "peaks" (tech, finance) and many low "valleys" (other fields)
+  const fields = [
+    { label: 'AI', height: 92 },
+    { label: '', height: 28 },
+    { label: 'Fin', height: 85 },
+    { label: '', height: 20 },
+    { label: '', height: 35 },
+    { label: 'Med', height: 70 },
+    { label: '', height: 15 },
+    { label: '', height: 22 },
+    { label: 'Edu', height: 30 },
+    { label: '', height: 18 },
+    { label: '', height: 25 },
+    { label: 'Lang', height: 32 },
+    { label: '', height: 12 },
+    { label: '', height: 20 },
+    { label: 'Bio', height: 55 },
+    { label: '', height: 18 },
+  ];
   return (
-    <div className="w-full h-36 relative flex items-center justify-center px-6">
-      <svg viewBox="0 0 200 90" className="w-full h-full" fill="none">
-        {/* Expert tool line (top) */}
+    <div className="w-full h-40 relative px-4 pt-4 pb-6">
+      <svg viewBox="0 0 200 100" className="w-full h-full" fill="none">
+        {/* Threshold line at y=1.0 ratio */}
+        <line x1="5" y1="10" x2="195" y2="10" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" strokeDasharray="3 3" />
+        <text x="196" y="12" fill="rgba(255,255,255,0.15)" fontSize="4" fontFamily="system-ui">{'Potential'}</text>
+
+        {/* Bars for each field */}
+        {fields.map((f, i) => {
+          const x = 8 + i * 12;
+          const barH = f.height * 0.85;
+          const y = 95 - barH;
+          const isPeak = f.height > 60;
+          return (
+            <g key={i}>
+              <rect
+                x={x}
+                y={y}
+                width="8"
+                height={barH}
+                rx="1.5"
+                fill={isPeak ? 'rgba(0,207,253,0.35)' : 'rgba(255,255,255,0.06)'}
+              />
+              {f.label && (
+                <text x={x + 4} y="99" fill={isPeak ? 'rgba(0,207,253,0.5)' : 'rgba(255,255,255,0.2)'} fontSize="4" textAnchor="middle" fontFamily="system-ui">
+                  {f.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Arrow from peak to valley with label */}
+        <defs>
+          <marker id="pv-arrow" markerWidth="5" markerHeight="4" refX="4" refY="2" orient="auto">
+            <polygon points="0 0, 5 2, 0 4" fill="rgba(0,207,253,0.6)" />
+          </marker>
+        </defs>
+        {/* Arrow from AI peak to Lang valley */}
         <path
-          d="M10 20 Q 50 15, 100 18 Q 150 21, 190 15"
-          stroke="rgba(0,207,253,0.5)"
-          strokeWidth="2"
+          d="M16 22 C 50 15, 100 40, 140 65"
+          stroke="rgba(0,207,253,0.3)"
+          strokeWidth="1"
           fill="none"
+          strokeDasharray="3 2"
+          markerEnd="url(#pv-arrow)"
         />
-        {/* Advancing learner line (bottom, rising) */}
-        <path
-          d="M10 70 Q 50 65, 100 55 Q 150 45, 190 30"
-          stroke="rgba(255,255,255,0.2)"
-          strokeWidth="1.5"
-          strokeDasharray="4 4"
-          fill="none"
-        />
-        {/* Arrows showing tool bringing expert level down */}
-        {[60, 110, 155].map((x, i) => (
-          <g key={i}>
-            <line
-              x1={x} y1={18 + i} x2={x} y2={62 - i * 7}
-              stroke="rgba(0,207,253,0.3)"
-              strokeWidth="1"
-              strokeDasharray="2 2"
-            />
-            <circle cx={x} cy={62 - i * 7} r="2" fill="rgba(0,207,253,0.5)" />
-            <circle cx={x} cy={18 + i} r="2" fill="rgba(0,207,253,0.3)" />
-          </g>
-        ))}
-        <text x="10" y="14" fill="rgba(0,207,253,0.5)" fontSize="6" fontFamily="system-ui">Expert Tools</text>
-        <text x="10" y="82" fill="rgba(255,255,255,0.25)" fontSize="6" fontFamily="system-ui">Advancing Learner</text>
-        <text x="145" y="82" fill="rgba(0,207,253,0.3)" fontSize="5" fontFamily="system-ui">Gap Closing</text>
+        <text x="70" y="35" fill="rgba(0,207,253,0.4)" fontSize="4.5" fontFamily="system-ui">{'Transfer Value'}</text>
       </svg>
     </div>
   );
 }
 
-function VibeCodeDiagram() {
+function LastMileDiagram() {
   return (
-    <div className="w-full h-36 flex flex-col items-center justify-center gap-2 px-6">
-      {/* Code-like blocks representing AI direction */}
-      <div className="w-full flex items-center gap-2">
-        <div className="w-16 h-2 rounded-full bg-[rgba(0,207,253,0.25)]" />
-        <div className="w-8 h-2 rounded-full bg-[rgba(255,255,255,0.06)]" />
-        <div className="w-20 h-2 rounded-full bg-[rgba(0,207,253,0.15)]" />
-      </div>
-      <div className="w-full flex items-center gap-2 pl-4">
-        <div className="w-12 h-2 rounded-full bg-[rgba(0,207,253,0.2)]" />
-        <div className="w-24 h-2 rounded-full bg-[rgba(255,255,255,0.04)]" />
-      </div>
-      <div className="w-full flex items-center gap-2 pl-4">
-        <div className="w-20 h-2 rounded-full bg-[rgba(0,207,253,0.12)]" />
-        <div className="w-10 h-2 rounded-full bg-[rgba(255,255,255,0.06)]" />
-        <div className="w-6 h-2 rounded-full bg-[rgba(0,207,253,0.3)]" />
-      </div>
-      <div className="w-full flex items-center gap-2">
-        <div className="w-10 h-2 rounded-full bg-[rgba(255,255,255,0.04)]" />
-        <div className="w-14 h-2 rounded-full bg-[rgba(0,207,253,0.18)]" />
-      </div>
-      <div className="mt-2 text-[9px] text-[#00cffd] opacity-50 tracking-wider uppercase">
-        {'>'} AI Director Output
-      </div>
+    <div className="w-full h-40 relative flex items-center justify-center px-4">
+      <svg viewBox="0 0 200 100" className="w-full h-full" fill="none">
+        {/* Tech peak on left */}
+        <circle cx="30" cy="25" r="18" fill="rgba(0,207,253,0.08)" stroke="rgba(0,207,253,0.2)" strokeWidth="1" />
+        <text x="30" y="23" fill="rgba(0,207,253,0.5)" fontSize="5" textAnchor="middle" fontFamily="system-ui">{'Tech'}</text>
+        <text x="30" y="29" fill="rgba(0,207,253,0.5)" fontSize="5" textAnchor="middle" fontFamily="system-ui">{'Peak'}</text>
+
+        {/* User valley on right */}
+        <circle cx="170" cy="70" r="18" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        <text x="170" y="68" fill="rgba(255,255,255,0.3)" fontSize="5" textAnchor="middle" fontFamily="system-ui">{'User'}</text>
+        <text x="170" y="74" fill="rgba(255,255,255,0.3)" fontSize="5" textAnchor="middle" fontFamily="system-ui">{'Need'}</text>
+
+        {/* The "last mile" bridge - a person carrying value across */}
+        <defs>
+          <marker id="lm-arrow" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="rgba(0,207,253,0.6)" />
+          </marker>
+        </defs>
+        <path
+          d="M48 30 C 80 35, 120 55, 152 65"
+          stroke="rgba(0,207,253,0.3)"
+          strokeWidth="1.5"
+          fill="none"
+          strokeDasharray="4 3"
+          markerEnd="url(#lm-arrow)"
+        />
+
+        {/* Person icon in the middle of the bridge */}
+        <circle cx="100" cy="48" r="3" fill="rgba(0,207,253,0.5)" />
+        <line x1="100" y1="51" x2="100" y2="60" stroke="rgba(0,207,253,0.4)" strokeWidth="1" />
+        <line x1="95" y1="55" x2="105" y2="55" stroke="rgba(0,207,253,0.4)" strokeWidth="1" />
+
+        {/* Label */}
+        <text x="100" y="72" fill="rgba(0,207,253,0.4)" fontSize="4.5" textAnchor="middle" fontFamily="system-ui">{'The Last Mile'}</text>
+
+        {/* vs sign for what it's not */}
+        <text x="100" y="90" fill="rgba(255,255,255,0.1)" fontSize="3.5" textAnchor="middle" fontFamily="system-ui">{'Not reinventing wheels -- delivering real value'}</text>
+      </svg>
     </div>
   );
 }
@@ -137,24 +186,24 @@ const cards: CardData[] = [
     titleEn: 'Mountain Climbing Theory',
     titleZh: '登山理论',
     subtitle: 'From Advancing to Expert',
-    description: '泛听中能听懂 80% 的进阶学习者，距离 Expert 只差那关键的 20%。Simpod 从专家的视角出发，提供精准的工具来弥合这段距离——让你不再被陌生表达打断，也不需要精听全篇，而是在流畅的泛听中高效进阶。',
+    description: '泛听中能听懂 80% 的进阶学习者，距离 Expert 只差那关键的 20%。但这 20% 如果要反复倒带去精听，就会打破心流、降低效率，甚至让泛听变成精听。Simpod 从专家视角出发，不要求你停下来逐字精听，而是在保持泛听心流的前提下，帮你精准地捕获和解析那 20%，让你高效地从进阶者走向 Expert。',
     diagram: <MountainDiagram />,
   },
   {
     icon: <ArrowUpRight size={20} />,
-    titleEn: 'Front Advantage',
-    titleZh: '前沿优势',
-    subtitle: 'Expert Tools for Advancing Learners',
-    description: '技术应该去找到你所在的位置，而不是强迫你适应技术。Simpod 把 AI 前沿的能力带到最简单的交互中——一次点击就能捕获、解析你没听懂的内容，让进阶者同时享受播客本身的价值和语言学习的价值，而非只能在精听中挣扎。',
-    diagram: <FrontAdvantageDiagram />,
+    titleEn: 'Peaks and Valleys',
+    titleZh: '峰与谷',
+    subtitle: 'Uneven Frontiers of Human Progress',
+    description: '人类的天才与资本并未均匀分布在所有领域。如果把每个领域的「当前发展程度 / 可达极限」画在纵轴上，你会看到几座孤峰 -- AI、金融、医疗 -- 而大量领域远低于其潜力线。语言学习就是这样的「谷地」之一。Simpod 的使命，是将 AI 前沿的能力搬运到这片被忽视的山谷，让技术真正服务于学习者的日常需求，而非停留在实验室里自我陶醉。',
+    diagram: <PeaksAndValleysDiagram />,
   },
   {
-    icon: <Sparkles size={20} />,
-    titleEn: 'Vibe Coding',
-    titleZh: '氛围编程',
-    subtitle: 'Directed by AI, Not by Code',
-    description: '这个项目完全由 AI 主导开发。没有传统的逐行编码，只有愿景、迭代和一个信念：最好的产品不是写出来的，是用直觉和氛围「感应」出来的。从产品设计到技术实现，AI 是导演，人是决策者。',
-    diagram: <VibeCodeDiagram />,
+    icon: <Route size={20} />,
+    titleEn: 'The Last Mile of Technology',
+    titleZh: '技术的最后一公里',
+    subtitle: 'From Peak to Valley',
+    description: '外卖行业有一个经典命题：「最后一公里」-- 从餐厅到用户手中的那段博弈。技术领域同理。对特定领域有深刻理解和真实痛感的人，如果同时拥抱前沿技术，就能充当从「峰」到「谷」的搬运工。这不是与技术团队的正面竞争，而是错位竞争 -- 创造的是真实价值，而非技术狂热和重复造轮子。世界上或许所有人都在各自屋子里造轮子，但真正稀缺的，是把轮子装到正确的车上。',
+    diagram: <LastMileDiagram />,
   },
 ];
 

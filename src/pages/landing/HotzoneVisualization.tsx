@@ -14,39 +14,39 @@ interface Hotzone {
 const HOTZONES: Hotzone[] = [
   {
     id: 'hz1',
-    start: 12,
-    width: 5,
-    labelEn: 'Unfamiliar Word',
-    labelZh: '生词',
-    textEn: '"...the fiscal implications of quantitative easing are often understated..."',
-    textZh: '"...量化宽松的财政影响往往被低估..."',
+    start: 10,
+    width: 6,
+    labelEn: 'The Pain',
+    labelZh: '痛点',
+    textEn: 'You\'re enjoying the podcast, absorbing ideas, feeling the flow -- then one phrase you don\'t catch breaks everything. You rewind, miss the mark, rewind again. The insight is gone. The momentum is gone.',
+    textZh: '你正在享受播客，吸收观点，感受心流 -- 然后一个没听清的短语打断了一切。你倒带，没找到，再倒带。洞察没了，动力也没了。',
   },
   {
     id: 'hz2',
-    start: 35,
-    width: 6,
-    labelEn: 'Complex Phrase',
-    labelZh: '复杂短语',
-    textEn: '"...what we call the paradox of thrift essentially means that individual saving can lead to collective decline..."',
-    textZh: '"...我们所说的节俭悖论本质上意味着个人储蓄可能导致集体衰退..."',
+    start: 32,
+    width: 7,
+    labelEn: 'The 80/20 Reality',
+    labelZh: '80/20 现实',
+    textEn: 'As an advancing learner, you understand 80% of what you hear. The other 20% -- unfamiliar idioms, fast-paced clauses, technical jargon -- are exactly the parts that would accelerate your growth. But traditional tools force you to choose: flow or precision.',
+    textZh: '作为进阶学习者，你能听懂 80% 的内容。剩下那 20% -- 陌生习语、快速从句、专业术语 -- 恰恰是能加速你成长的部分。但传统工具强迫你二选一：心流还是精确。',
   },
   {
     id: 'hz3',
-    start: 58,
-    width: 5,
-    labelEn: 'Fast Speech',
-    labelZh: '语速过快',
-    textEn: '"...disproportionately-allocated-capital-expenditure across emerging-market-sovereign-debt instruments..."',
-    textZh: '"...在新兴市场主权债务工具中不成比例地分配的资本支出..."',
+    start: 56,
+    width: 6,
+    labelEn: 'Our Answer',
+    labelZh: '我们的解法',
+    textEn: 'One tap. No rewinding. Simpod marks the moment, snaps back to the sentence boundary, and surfaces the transcript -- all while you keep listening. The 20% is captured; the 80% flow is unbroken.',
+    textZh: '一次点击，无需倒带。Simpod 标记那个瞬间，自动回溯到句子起点，浮现转录文本 -- 而你继续听。20% 被捕获了，80% 的心流没有中断。',
   },
   {
     id: 'hz4',
-    start: 79,
-    width: 6,
-    labelEn: 'Idiom / Slang',
-    labelZh: '习语 / 俚语',
-    textEn: '"...so basically they\'re kicking the can down the road, which is par for the course in Washington..."',
-    textZh: '"...所以基本上他们是在拖延问题，这在华盛顿已经是家常便饭了..."',
+    start: 78,
+    width: 7,
+    labelEn: 'The Double Value',
+    labelZh: '双重价值',
+    textEn: 'You\'re no longer choosing between learning the language and absorbing the content. Every podcast episode becomes both a listening comprehension exercise and a source of real knowledge -- without the friction of intensive listening.',
+    textZh: '你不再需要在「学语言」和「听内容」之间做选择。每一期播客既是听力训练，也是真正的知识来源 -- 没有精听的摩擦。',
   },
 ];
 
@@ -70,13 +70,10 @@ export function HotzoneVisualization() {
             {'20%'}
           </h2>
           <p className="text-[#8a8f98] text-lg max-w-2xl mx-auto leading-relaxed">
-            {'80% '}of a podcast you already understand.
-            {' Simpod '}helps you capture the other
-            {' 20% '}that trips you up -- without breaking your flow.
+            {'80% of a podcast you already understand. Simpod helps you capture the other 20% that trips you up -- without breaking your flow.'}
           </p>
           <p className="text-[#555] text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-            {'80% '}的播客内容你已经能听懂。
-            Simpod 帮你捕捉剩下{'那 20% '}让你卡壳的部分 -- 而不打断你的心流。
+            {'80% 的播客内容你已经能听懂。Simpod 帮你捕捉剩下那 20% 让你卡壳的部分 -- 而不打断你的心流。'}
           </p>
         </motion.div>
 
@@ -212,7 +209,7 @@ export function HotzoneVisualization() {
                       {HOTZONES.find(z => z.id === activeZone)?.labelZh}
                     </span>
                   </div>
-                  <p className="text-white/80 text-sm md:text-base leading-relaxed italic mb-2">
+                  <p className="text-white/80 text-sm md:text-base leading-relaxed mb-3">
                     {HOTZONES.find(z => z.id === activeZone)?.textEn}
                   </p>
                   <p className="text-[#8a8f98] text-xs md:text-sm leading-relaxed">

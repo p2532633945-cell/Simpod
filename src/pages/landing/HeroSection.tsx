@@ -100,23 +100,6 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-4">
-        {/* Product Icon */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="mb-2"
-        >
-          <img
-            src="/images/simpod-icon.png"
-            alt="Simpod app icon"
-            className="w-20 h-20 md:w-24 md:h-24 rounded-2xl"
-            style={{
-              boxShadow: '0 0 40px rgba(120, 100, 255, 0.15)',
-            }}
-          />
-        </motion.div>
-
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
