@@ -77,7 +77,7 @@ export function InteractionDemo() {
     // Calculate target: rewind ~10 seconds, then snap to nearest sentence start
     const rewindTarget = Math.max(0, currentTime - REWIND_SECONDS);
     // Find the segment that contains or is closest before the rewind target
-    const segment = SEGMENTS.findLast(s => s.start <= rewindTarget) || SEGMENTS[0];
+    const segment = [...SEGMENTS].reverse().find(s => s.start <= rewindTarget) || SEGMENTS[0];
     const targetTime = segment.start;
 
     // Animate snap-back over 800ms for dramatic effect
